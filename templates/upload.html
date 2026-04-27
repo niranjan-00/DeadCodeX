@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Project - {{ app_name }}{% endblock %}
+
+{% block content %}
+<script>
+    if (!isLoggedIn()) {
+        window.location.href = "/login";
+    }
+</script>
+
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass-strong fixed h-full z-30 hidden md:block">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                    </svg>
+                </div>
+                <span class="text-lg font-bold text-white">
+                    Dead<span class="text-cyan-400">Code</span>X
+                </span>
+            </a>
+
+            <nav class="space-y-2">
+                <a href="/dashboard" class="nav-item">Dashboard</a>
+                <a href="/upload" class="nav-item active">Upload Project</a>
+                <a href="/settings" class="nav-item">Settings</a>
+                <button onclick="logout()" class="nav-item w-full text-left text-rose-400">
+                    Logout
+                </button>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 md:ml-64">
+        <div class="glass border-b border-white/5 px-6 py-4">
+            <h1 class="text-xl font-bold text-white">Upload Project</h1>
+        </div>
+
+        <div class="p-6 max-w-4xl mx-auto">
+
+            <!-- Project Details -->
+            <div class="card mb-6">
+                <h2 class="text-lg font-semibold text-white mb-4">Project Details</h2>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-slate-300 mb-1">Project Name</label>
+                        <input type="text" id="project-name" class="input-glass"
+                               placeholder="My Project">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-slate-300 mb-1">Language</label>
+                        <select id="project-language" class="input-glass">
+                            <option value="auto">Auto Detect</option>
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="php">PHP</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm text-slate-300 mb-1">Description</label>
+                    <textarea id="project-desc" class="input-glass" rows="3"></textarea>
+                </div>
+            </div>
+
+            <!-- Upload -->
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+
+                <!-- File Upload -->
+                <div class="card">
+                    <h3 class="text-white font-semibold mb-3">Upload ZIP</h3>
+
+                    <div id="drop-zone"
+                         class="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center cursor-pointer hover:border-cyan-400 transition">
+
+                        <p class="text-slate-300">Drag ZIP here or click</p>
+
+                        <input type="file"
+                               id="file-input"
+                               class="hidden"
+                               accept=".zip,.tar,.gz,.tgz">
+                    </div>
+                </div>
+
+                <!-- GitHub -->
+                <div class="card">
+                    <h3 class="text-white font-semibold mb-3">GitHub Import</h3>
+
+                    <input type="text"
+                           id="github-url"
+                           class="input-glass mb-3"
+                           placeholder="https://github.com/user/repo">
+
+                    <button onclick="uploadGithub()"
+                            class="btn-secondary w-full">
+                        Import from GitHub
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scan Options -->
+            <div class="card mb-6">
+                <h3 class="text-white font-semibold mb-4">Scan Options</h3>
+
+                <div class="space-y-2">
+                    <label><input type="checkbox" id="opt-dead-code" checked> Dead Code</label><br>
+                    <label><input type="checkbox" id="opt-security" checked> Security</label><br>
+                    <label><input type="checkbox" id="opt-duplicates" checked> Duplicate Code</label><br>
+                    <label><input type="checkbox" id="opt-performance"> Performance</label>
+                </div>
+            </div>
+
+            <!-- Button -->
+            <button onclick="startUploadAndScan()"
+                    id="upload-btn"
+                    class="btn-primary w-full py-4 text-lg">
+                Upload & Scan
+                <span id="upload-spinner" class="hidden ml-2">⏳</span>
+            </button>
+
+            <!-- Progress -->
+            <div id="upload-progress" class="hidden mt-6">
+                <div class="card">
+                    <div class="flex justify-between mb-2">
+                        <span id="progress-text">Preparing...</span>
+                        <span id="progress-pct">0%</span>
+                    </div>
+
+                    <div class="w-full bg-slate-700 rounded-full h-3">
+                        <div id="progress-bar"
+                             class="bg-cyan-400 h-3 rounded-full"
+                             style="width:0%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    let selectedFile = null;
+
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", (e) => {
+        if (e.target.files.length) {
+            selectedFile = e.target.files[0];
+            dropZone.innerHTML = `<p class="text-cyan-400">${selectedFile.name}</p>`;
+        }
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+
+        if (e.dataTransfer.files.length) {
+            selectedFile = e.dataTransfer.files[0];
+            fileInput.files = e.dataTransfer.files;
+            dropZone.innerHTML = `<p class="text-cyan-400">${selectedFile.name}</p>`;
+        }
+    });
+
+    async function uploadGithub() {
+        const url = document.getElementById("github-url").value.trim();
+
+        if (!url) {
+            showToast("Enter GitHub URL", "warning");
+            return;
+        }
+
+        await doUpload("github", null, url);
+    }
+
+    async function startUploadAndScan() {
+        const githubUrl = document.getElementById("github-url").value.trim();
+
+        if (!selectedFile && !githubUrl) {
+            showToast("Select file or GitHub URL", "warning");
+            return;
+        }
+
+        if (selectedFile) {
+            await doUpload("upload", selectedFile, null);
+        } else {
+            await doUpload("github", null, githubUrl);
+        }
+    }
+
+    async function doUpload(sourceType, file = null, githubUrl = null) {
+        const btn = document.getElementById("upload-btn");
+        const spinner = document.getElementById("upload-spinner");
+        const progressDiv = document.getElementById("upload-progress");
+        const progressBar = document.getElementById("progress-bar");
+        const progressPct = document.getElementById("progress-pct");
+        const progressText = document.getElementById("progress-text");
+
+        btn.disabled = true;
+        spinner.classList.remove("hidden");
+        progressDiv.classList.remove("hidden");
+
+        try {
+            const token = getToken();
+
+            if (!token) {
+                showToast("Login again", "error");
+                window.location.href = "/login";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("source_type", sourceType);
+            formData.append("name", document.getElementById("project-name").value || "Untitled");
+            formData.append("description", document.getElementById("project-desc").value || "");
+            formData.append("language", document.getElementById("project-language").value);
+
+            if (file) formData.append("file", file);
+            if (githubUrl) formData.append("github_url", githubUrl);
+
+            progressBar.style.width = "30%";
+            progressPct.textContent = "30%";
+            progressText.textContent = "Uploading...";
+
+            const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            const uploadData = await uploadRes.json();
+
+            if (!uploadRes.ok || !uploadData.success) {
+                throw new Error(uploadData.message || "Upload failed");
+            }
+
+            const projectId = uploadData.data.project.id;
+
+            progressBar.style.width = "70%";
+            progressPct.textContent = "70%";
+            progressText.textContent = "Scanning...";
+
+            const scanRes = await fetch("/api/scan", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    project_id: projectId,
+                    scan_type: "full",
+                    options: {
+                        dead_code: document.getElementById("opt-dead-code").checked,
+                        security: document.getElementById("opt-security").checked,
+                        duplicates: document.getElementById("opt-duplicates").checked,
+                        performance: document.getElementById("opt-performance").checked
+                    }
+                })
+            });
+
+            const scanData = await scanRes.json();
+
+            if (!scanRes.ok || !scanData.success) {
+                throw new Error(scanData.message || "Scan failed");
+            }
+
+            progressBar.style.width = "100%";
+            progressPct.textContent = "100%";
+            progressText.textContent = "Completed";
+
+            showToast("Upload successful", "success");
+
+            setTimeout(() => {
+                window.location.href = `/report/${scanData.data.scan.id}`;
+            }, 1200);
+
+        } catch (err) {
+            console.error(err);
+            showToast(err.message || "Network error", "error");
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add("hidden");
+        }
+    }
+
+    function logout() {
+        clearToken();
+        window.location.href = "/";
+    }
+</script>
+
+{% endblock %}

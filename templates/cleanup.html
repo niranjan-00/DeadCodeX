@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Cleanup - {{ app_name }}{% endblock %}
+
+{% block content %}
+<script>if (!isLoggedIn()) window.location.href = '/login';</script>
+
+<div class="min-h-screen flex">
+    <aside class="w-64 glass-strong fixed h-full z-30 hidden md:block">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                </div>
+                <span class="text-lg font-bold text-white">Dead<span class="text-cyan-400">Code</span>X</span>
+            </a>
+            <nav class="space-y-1">
+                <a href="/dashboard" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+                <a href="/upload" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>Upload</a>
+                <a href="/settings" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</a>
+                <div class="pt-4 mt-4 border-t border-white/5">
+                    <button onclick="logout()" class="nav-item w-full text-left text-rose-400 hover:text-rose-300"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Logout</button>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-64">
+        <div class="glass border-b border-white/5 px-6 py-4">
+            <h1 class="text-xl font-bold text-white">Auto Cleanup</h1>
+        </div>
+        
+        <div class="p-6 max-w-4xl mx-auto">
+            <!-- Impact Summary -->
+            <div class="card mb-6" id="impact-card">
+                <h2 class="text-lg font-semibold text-white mb-4">Cleanup Impact Preview</h2>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="text-center p-4 rounded-lg bg-dark-800/50">
+                        <div class="text-2xl font-bold text-rose-400" id="impact-files">0</div>
+                        <div class="text-xs text-slate-500">Files Affected</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-dark-800/50">
+                        <div class="text-2xl font-bold text-cyan-400" id="impact-issues">0</div>
+                        <div class="text-xs text-slate-500">Issues Fixable</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-dark-800/50">
+                        <div class="text-2xl font-bold text-emerald-400" id="impact-lines">0</div>
+                        <div class="text-xs text-slate-500">Lines Saved</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-dark-800/50">
+                        <div class="text-2xl font-bold text-purple-400" id="impact-size">0 KB</div>
+                        <div class="text-xs text-slate-500">Size Reduction</div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button onclick="runCleanup()" id="cleanup-btn" class="btn-primary flex-1 py-3">
+                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Auto-Fix All Safe Issues
+                    </button>
+                    <button onclick="downloadCleaned()" id="download-btn" class="btn-secondary flex-1 py-3">
+                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Download Cleaned ZIP
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Fixable Issues -->
+            <div class="card">
+                <h3 class="text-sm font-semibold text-white mb-4">Fixable Issues</h3>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all" checked class="rounded bg-dark-800 border-slate-600 text-cyan-400"></th>
+                                <th>Type</th>
+                                <th>File</th>
+                                <th>Line</th>
+                                <th>Title</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fixable-tbody">
+                            <tr><td colspan="6" class="text-center text-slate-500 py-8">Loading preview...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+const scanId = {{ scan_id }};
+
+async function loadPreview() {
+    try {
+        const res = await api(`/api/report/${scanId}/cleanup-preview`);
+        if (!res) return;
+        const data = await res.json();
+        
+        if (!data.success) {
+            showToast(data.message, 'error');
+            return;
+        }
+        
+        const d = data.data;
+        document.getElementById('impact-files').textContent = d.files_count;
+        document.getElementById('impact-issues').textContent = d.issues_fixable;
+        document.getElementById('impact-lines').textContent = d.total_lines_saved;
+        document.getElementById('impact-size').textContent = `${Math.round(d.estimated_size_saved / 1024)} KB`;
+        
+        const tbody = document.getElementById('fixable-tbody');
+        if (!d.fixable_issues.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-8">No auto-fixable issues found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = d.fixable_issues.map((i, idx) => `
+            <tr>
+                <td><input type="checkbox" class="issue-checkbox rounded bg-dark-800 border-slate-600 text-cyan-400" checked data-index="${idx}"></td>
+                <td><span class="text-xs text-slate-400">${i.issue_type?.replace(/_/g, ' ') || ''}</span></td>
+                <td class="font-mono text-xs text-slate-300">${i.file_path}</td>
+                <td class="font-mono text-xs text-cyan-400">${i.line_start}</td>
+                <td class="text-sm text-white">${i.title}</td>
+                <td><span class="text-xs text-emerald-400">Auto-remove</span></td>
+            </tr>
+        `).join('');
+        
+    } catch (err) {
+        console.error('Cleanup preview error:', err);
+    }
+}
+
+function runCleanup() {
+    showToast('Cleanup feature is available in Pro plan. This is a demo preview.', 'info');
+}
+
+function downloadCleaned() {
+    showToast('Download feature is available in Pro plan. This is a demo preview.', 'info');
+}
+
+function logout() {
+    clearToken();
+    window.location.href = '/';
+}
+
+document.addEventListener('DOMContentLoaded', loadPreview);
+</script>
+{% endblock %}

@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+
+{% block content %}
+<!-- Auth check -->
+<script>
+if (!isLoggedIn()) {
+    window.location.href = '/login';
+}
+</script>
+
+<div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-64 glass-strong fixed h-full z-30 hidden md:block">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                </div>
+                <span class="text-lg font-bold text-white">Dead<span class="text-cyan-400">Code</span>X</span>
+            </a>
+            
+            <nav class="space-y-1">
+                <a href="/dashboard" class="nav-item active">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    Dashboard
+                </a>
+                <a href="/upload" class="nav-item">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    Upload Project
+                </a>
+                <a href="/dashboard?tab=scans" class="nav-item" onclick="showTab('scans'); return false;">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Scan Results
+                </a>
+                <a href="/settings" class="nav-item">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Settings
+                </a>
+                <div class="pt-4 mt-4 border-t border-white/5">
+                    <button onclick="logout()" class="nav-item w-full text-left text-rose-400 hover:text-rose-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        Logout
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </aside>
+    
+    <!-- Mobile header -->
+    <div class="md:hidden fixed top-0 left-0 right-0 z-40 glass-strong px-4 py-3 flex items-center justify-between">
+        <span class="text-lg font-bold text-white">Dashboard</span>
+        <button onclick="document.getElementById('mobile-nav').classList.toggle('hidden')" class="text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+    </div>
+    <div id="mobile-nav" class="hidden fixed inset-0 z-50 glass-strong pt-16">
+        <div class="flex flex-col p-4 space-y-2">
+            <a href="/dashboard" class="nav-item active">Dashboard</a>
+            <a href="/upload" class="nav-item">Upload Project</a>
+            <a href="/settings" class="nav-item">Settings</a>
+            <button onclick="logout()" class="nav-item text-rose-400">Logout</button>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <main class="flex-1 md:ml-64 pt-14 md:pt-0">
+        <!-- Top bar -->
+        <div class="glass border-b border-white/5 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold text-white">Dashboard</h1>
+                <p class="text-sm text-slate-400" id="welcome-text">Welcome back!</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/upload" class="btn-primary text-sm py-2 px-4">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    New Scan
+                </a>
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm" id="user-avatar">U</div>
+            </div>
+        </div>
+        
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="card">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm text-slate-400">Projects</span>
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-white" id="stat-projects">0</div>
+                    <div class="text-xs text-slate-500 mt-1">Total uploaded</div>
+                </div>
+                <div class="card">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm text-slate-400">Scans</span>
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-white" id="stat-scans">0</div>
+                    <div class="text-xs text-slate-500 mt-1">Completed</div>
+                </div>
+                <div class="card">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm text-slate-400">Issues Found</span>
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-white" id="stat-issues">0</div>
+                    <div class="text-xs text-slate-500 mt-1">All time</div>
+                </div>
+                <div class="card">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm text-slate-400">Health Score</span>
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-emerald-400" id="stat-health">100</div>
+                    <div class="text-xs text-slate-500 mt-1">Avg. across projects</div>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-white mb-4">Issue Distribution</h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="issuesChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-white mb-4">Scan Activity</h3>
+                    <div class="h-64">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Scans -->
+            <div class="card mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white">Recent Scans</h3>
+                    <a href="/dashboard?tab=scans" class="text-xs text-cyan-400 hover:text-cyan-300" onclick="showTab('scans'); return false;">View All</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table" id="scans-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Issues</th>
+                                <th>Health</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scans-tbody">
+                            <tr><td colspan="7" class="text-center text-slate-500 py-8">Loading scans...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Recent Projects -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white">Recent Projects</h3>
+                    <a href="/upload" class="text-xs text-cyan-400 hover:text-cyan-300">New Project</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table" id="projects-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Language</th>
+                                <th>Files</th>
+                                <th>Lines</th>
+                                <th>Scans</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projects-tbody">
+                            <tr><td colspan="7" class="text-center text-slate-500 py-8">Loading projects...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+let issuesChart, activityChart;
+
+async function loadDashboard() {
+    try {
+        // Load user data
+        const userRes = await api('/api/me');
+        if (userRes) {
+            const userData = await userRes.json();
+            if (userData.success) {
+                const user = userData.data.user;
+                document.getElementById('welcome-text').textContent = `Welcome back, ${user.full_name || user.username}!`;
+                const initials = (user.full_name || user.username).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                document.getElementById('user-avatar').textContent = initials;
+            }
+        }
+        
+        // Load projects
+        const projRes = await api('/api/projects');
+        if (projRes) {
+            const projData = await projRes.json();
+            if (projData.success) {
+                const projects = projData.data.projects;
+                document.getElementById('stat-projects').textContent = projects.length;
+                renderProjects(projects);
+            }
+        }
+        
+        // Load scans
+        const scanRes = await api('/api/scans');
+        if (scanRes) {
+            const scanData = await scanRes.json();
+            if (scanData.success) {
+                const scans = scanData.data.scans;
+                document.getElementById('stat-scans').textContent = scans.filter(s => s.status === 'completed').length;
+                
+                const totalIssues = scans.reduce((sum, s) => sum + s.issues_found, 0);
+                document.getElementById('stat-issues').textContent = totalIssues;
+                
+                const avgHealth = scans.length ? Math.round(scans.reduce((sum, s) => sum + s.health_score, 0) / scans.length) : 100;
+                document.getElementById('stat-health').textContent = avgHealth;
+                
+                renderScans(scans);
+                renderCharts(scans);
+            }
+        }
+    } catch (err) {
+        console.error('Dashboard load error:', err);
+        showToast('Failed to load dashboard data', 'error');
+    }
+}
+
+function renderProjects(projects) {
+    const tbody = document.getElementById('projects-tbody');
+    if (!projects.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">No projects yet. <a href="/upload" class="text-cyan-400">Upload one</a></td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = projects.slice(0, 10).map(p => `
+        <tr>
+            <td class="font-medium">${p.name}</td>
+            <td><span class="px-2 py-1 rounded text-xs bg-cyan-500/10 text-cyan-400">${p.language}</span></td>
+            <td>${p.total_files}</td>
+            <td>${p.total_lines.toLocaleString()}</td>
+            <td>${p.scan_count}</td>
+            <td class="text-slate-400">${new Date(p.created_at).toLocaleDateString()}</td>
+            <td>
+                <a href="/upload" class="text-cyan-400 hover:text-cyan-300 text-sm mr-3">Scan</a>
+                <button onclick="deleteProject(${p.id})" class="text-rose-400 hover:text-rose-300 text-sm">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderScans(scans) {
+    const tbody = document.getElementById('scans-tbody');
+    if (!scans.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">No scans yet. <a href="/upload" class="text-cyan-400">Start a scan</a></td></tr>';
+        return;
+    }
+    
+    const statusColors = {
+        pending: 'text-amber-400',
+        running: 'text-cyan-400',
+        completed: 'text-emerald-400',
+        failed: 'text-rose-400'
+    };
+    
+    tbody.innerHTML = scans.slice(0, 10).map(s => `
+        <tr>
+            <td>${s.project_name || 'Unknown'}</td>
+            <td><span class="px-2 py-1 rounded text-xs bg-purple-500/10 text-purple-400">${s.scan_type}</span></td>
+            <td><span class="${statusColors[s.status] || 'text-slate-400'}">${s.status}</span></td>
+            <td>${s.critical_count > 0 ? `<span class="text-rose-400">${s.critical_count} crit</span>, ` : ''}${s.warning_count} warn</td>
+            <td><span class="${s.health_score >= 80 ? 'text-emerald-400' : s.health_score >= 50 ? 'text-amber-400' : 'text-rose-400'}">${s.health_score}/100</span></td>
+            <td class="text-slate-400">${new Date(s.created_at).toLocaleDateString()}</td>
+            <td>
+                ${s.status === 'completed' ? `<a href="/report/${s.id}" class="text-cyan-400 hover:text-cyan-300 text-sm">View</a>` : '<span class="text-slate-600 text-sm">-</span>'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderCharts(scans) {
+    const completed = scans.filter(s => s.status === 'completed');
+    
+    // Issue distribution pie chart
+    const totalCrit = completed.reduce((s, x) => s + x.critical_count, 0);
+    const totalWarn = completed.reduce((s, x) => s + x.warning_count, 0);
+    const totalInfo = completed.reduce((s, x) => s + x.info_count, 0);
+    
+    if (issuesChart) issuesChart.destroy();
+    issuesChart = new Chart(document.getElementById('issuesChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Critical', 'Warning', 'Info'],
+            datasets: [{
+                data: [totalCrit, totalWarn, totalInfo],
+                backgroundColor: ['#ef4444', '#f59e0b', '#00f0ff'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 16 } }
+            }
+        }
+    });
+    
+    // Activity bar chart (last 7 days)
+    const days = {};
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        days[d.toISOString().split('T')[0]] = 0;
+    }
+    completed.forEach(s => {
+        const d = s.created_at.split('T')[0];
+        if (days[d] !== undefined) days[d]++;
+    });
+    
+    if (activityChart) activityChart.destroy();
+    activityChart = new Chart(document.getElementById('activityChart'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(days).map(d => d.slice(5)),
+            datasets: [{
+                label: 'Scans',
+                data: Object.values(days),
+                backgroundColor: 'rgba(0, 240, 255, 0.6)',
+                borderColor: '#00f0ff',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false, color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } }
+            }
+        }
+    });
+}
+
+async function deleteProject(id) {
+    if (!confirm('Delete this project and all its scans?')) return;
+    try {
+        const res = await api(`/api/projects/${id}`, { method: 'DELETE' });
+        if (res && res.ok) {
+            showToast('Project deleted', 'success');
+            loadDashboard();
+        }
+    } catch (err) {
+        showToast('Failed to delete', 'error');
+    }
+}
+
+function logout() {
+    clearToken();
+    window.location.href = '/';
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

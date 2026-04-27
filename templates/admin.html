@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - {{ app_name }}{% endblock %}
+
+{% block content %}
+<script>
+if (!isLoggedIn()) window.location.href = '/login';
+</script>
+
+<div class="min-h-screen flex">
+    <aside class="w-64 glass-strong fixed h-full z-30 hidden md:block">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                </div>
+                <span class="text-lg font-bold text-white">Dead<span class="text-cyan-400">Code</span>X</span>
+            </a>
+            <nav class="space-y-1">
+                <a href="/dashboard" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+                <a href="/admin" class="nav-item active"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>Admin Panel</a>
+                <div class="pt-4 mt-4 border-t border-white/5">
+                    <button onclick="logout()" class="nav-item w-full text-left text-rose-400 hover:text-rose-300"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Logout</button>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-64">
+        <div class="glass border-b border-white/5 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold text-white">Admin Panel</h1>
+                <p class="text-sm text-slate-400">System overview and management</p>
+            </div>
+            <div class="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">Admin Access</div>
+        </div>
+        
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="admin-stats">
+                <div class="card">
+                    <div class="text-sm text-slate-400">Total Users</div>
+                    <div class="text-2xl font-bold text-white mt-1" id="admin-users">-</div>
+                </div>
+                <div class="card">
+                    <div class="text-sm text-slate-400">Total Projects</div>
+                    <div class="text-2xl font-bold text-white mt-1" id="admin-projects">-</div>
+                </div>
+                <div class="card">
+                    <div class="text-sm text-slate-400">Total Scans</div>
+                    <div class="text-2xl font-bold text-white mt-1" id="admin-scans">-</div>
+                </div>
+                <div class="card">
+                    <div class="text-sm text-slate-400">Issues Found</div>
+                    <div class="text-2xl font-bold text-white mt-1" id="admin-issues">-</div>
+                </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-white mb-4">Daily Scans (Last 30 Days)</h3>
+                    <div class="h-56">
+                        <canvas id="adminChart1"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-white mb-4">Daily Active Users</h3>
+                    <div class="h-56">
+                        <canvas id="adminChart2"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Users Table -->
+            <div class="card mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white">Users</h3>
+                    <input type="text" id="user-search" placeholder="Search users..." class="input-glass text-sm py-1.5 px-3 w-64" onkeyup="searchUsers()">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Projects</th>
+                                <th>Scans</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <tr><td colspan="8" class="text-center text-slate-500 py-8">Loading users...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="card">
+                <h3 class="text-sm font-semibold text-white mb-4">Recent Activity</h3>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>Entity</th>
+                                <th>Details</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-tbody">
+                            <tr><td colspan="5" class="text-center text-slate-500 py-8">Loading activity...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+let adminChart1, adminChart2;
+let allUsers = [];
+
+async function loadAdmin() {
+    try {
+        // Stats
+        const statsRes = await api('/api/admin/stats');
+        if (!statsRes) {
+            showToast('Admin access required', 'error');
+            window.location.href = '/dashboard';
+            return;
+        }
+        const stats = await statsRes.json();
+        
+        if (!stats.success) {
+            showToast(stats.message, 'error');
+            window.location.href = '/dashboard';
+            return;
+        }
+        
+        const d = stats.data;
+        document.getElementById('admin-users').textContent = d.users.total;
+        document.getElementById('admin-projects').textContent = d.projects.total;
+        document.getElementById('admin-scans').textContent = d.scans.total;
+        document.getElementById('admin-issues').textContent = d.issues.total;
+        
+        // Activity
+        const activityTbody = document.getElementById('activity-tbody');
+        activityTbody.innerHTML = d.recent_activity.map(a => `
+            <tr>
+                <td><span class="px-2 py-1 rounded text-xs bg-cyan-500/10 text-cyan-400">${a.action}</span></td>
+                <td class="text-sm text-white">User #${a.user_id}</td>
+                <td class="text-sm text-slate-400">${a.entity_type || '-'}</td>
+                <td class="text-sm text-slate-400">${a.details || '-'}</td>
+                <td class="text-xs text-slate-500">${new Date(a.created_at).toLocaleString()}</td>
+            </tr>
+        `).join('');
+        
+    } catch (err) {
+        console.error('Admin load error:', err);
+    }
+    
+    // Load users
+    loadUsers();
+    
+    // Load analytics
+    loadAnalytics();
+}
+
+async function loadUsers(page = 1) {
+    try {
+        const res = await api(`/api/admin/users?page=${page}`);
+        if (!res) return;
+        const data = await res.json();
+        if (data.success) {
+            allUsers = data.data.users;
+            renderUsers(allUsers);
+        }
+    } catch (err) {
+        console.error('Load users error:', err);
+    }
+}
+
+function renderUsers(users) {
+    const tbody = document.getElementById('users-tbody');
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-slate-500 py-8">No users found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">${(u.full_name || u.username).slice(0, 2).toUpperCase()}</div>
+                    <div>
+                        <div class="text-sm font-medium text-white">${u.full_name || u.username}</div>
+                        <div class="text-xs text-slate-500">@${u.username}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="text-sm text-slate-400">${u.email}</td>
+            <td><span class="px-2 py-1 rounded text-xs ${u.role === 'admin' ? 'bg-purple-500/10 text-purple-400' : 'bg-slate-500/10 text-slate-400'}">${u.role}</span></td>
+            <td><span class="px-2 py-1 rounded text-xs ${u.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td class="text-sm text-white">${u.project_count}</td>
+            <td class="text-sm text-white">${u.scan_count}</td>
+            <td class="text-xs text-slate-500">${new Date(u.created_at).toLocaleDateString()}</td>
+            <td>
+                <button onclick="toggleUser(${u.id})" class="text-sm text-cyan-400 hover:text-cyan-300 mr-2">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function searchUsers() {
+    const term = document.getElementById('user-search').value.toLowerCase();
+    const filtered = allUsers.filter(u => 
+        u.username.toLowerCase().includes(term) || 
+        u.email.toLowerCase().includes(term) ||
+        (u.full_name && u.full_name.toLowerCase().includes(term))
+    );
+    renderUsers(filtered);
+}
+
+async function toggleUser(userId) {
+    try {
+        const res = await api(`/api/admin/users/${userId}/toggle`, { method: 'POST' });
+        if (res && res.ok) {
+            showToast('User status updated', 'success');
+            loadUsers();
+        }
+    } catch {
+        showToast('Failed to update user', 'error');
+    }
+}
+
+async function loadAnalytics() {
+    try {
+        const res = await api('/api/admin/analytics/usage');
+        if (!res) return;
+        const data = await res.json();
+        if (!data.success) return;
+        
+        const d = data.data;
+        
+        // Daily scans chart
+        if (adminChart1) adminChart1.destroy();
+        adminChart1 = new Chart(document.getElementById('adminChart1'), {
+            type: 'line',
+            data: {
+                labels: d.daily_scans.map(x => x.date.slice(5)),
+                datasets: [{
+                    label: 'Scans',
+                    data: d.daily_scans.map(x => x.count),
+                    borderColor: '#00f0ff',
+                    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } }
+                }
+            }
+        });
+        
+        // DAU chart
+        if (adminChart2) adminChart2.destroy();
+        adminChart2 = new Chart(document.getElementById('adminChart2'), {
+            type: 'bar',
+            data: {
+                labels: d.daily_active_users.map(x => x.date.slice(5)),
+                datasets: [{
+                    label: 'Active Users',
+                    data: d.daily_active_users.map(x => x.count),
+                    backgroundColor: 'rgba(168, 85, 247, 0.6)',
+                    borderColor: '#a855f7',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Analytics error:', err);
+    }
+}
+
+function logout() {
+    clearToken();
+    window.location.href = '/';
+}
+
+document.addEventListener('DOMContentLoaded', loadAdmin);
+</script>
+{% endblock %}

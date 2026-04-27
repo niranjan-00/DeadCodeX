@@ -1,0 +1,123 @@
+// DeadCodeX Enhanced Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  username          String   @unique
+  email             String   @unique
+  password          String?  // Nullable for OAuth users
+  avatar            String?
+  provider          String?  // 'email', 'google', 'github'
+  providerId        String?  // OAuth provider ID
+  emailVerified     Boolean  @default(false)
+  plan              String   @default("free") // 'free', 'pro', 'enterprise'
+  githubToken       String?  // Encrypted GitHub access token
+  googleToken       String?  // Encrypted Google access token
+  awsAccessKey      String?  // Encrypted AWS access key
+  awsSecretKey      String?  // Encrypted AWS secret key
+  googleDriveToken  String?  // Encrypted Google Drive token
+  backupEnabled     Boolean  @default(true)
+  lastBackupAt      DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  scans             Scan[]
+  codeAnalyses      CodeAnalysis[]
+  settings          Settings?
+}
+
+model Settings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  autoCleanup       Boolean  @default(false)
+  notifyOnError     Boolean  @default(true)
+  backupFrequency   String   @default("weekly") // 'daily', 'weekly', 'monthly'
+  maxScansPerMonth  Int      @default(10)
+  preferredLanguage String   @default("javascript")
+  theme             String   @default("dark")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Scan {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectName        String
+  filename           String?
+  source             String   @default("manual") // 'manual', 'github', 'drive', 'aws', 'gcp'
+  sourceUrl          String?  // URL for GitHub repo or cloud resource
+  status             String   @default("Pending") // 'Pending', 'Processing', 'Completed', 'Failed'
+  date               DateTime @default(now())
+  totalFiles         Int      @default(0)
+  totalLines         Int      @default(0)
+  unusedFunctions    Int      @default(0)
+  unusedVariables    Int      @default(0)
+  unusedImports      Int      @default(0)
+  errorCount         Int      @default(0)
+  warningCount       Int      @default(0)
+  cleanupPercentage  Float    @default(0.0)
+  findings           String?  // JSON string for storing findings
+  errors             String?  // JSON string for storing errors
+  suggestions        String?  // JSON string for storing AI suggestions
+  rectifiedCode      String?  // JSON string for storing fixed code
+  fileContents       String?  // JSON string for storing original file contents
+  backupPath         String?  // Path to backup file
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  codeAnalyses       CodeAnalysis[]
+}
+
+model CodeAnalysis {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanId          String
+  scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  filePath        String
+  fileName        String
+  language        String
+  errors          String   // JSON array of errors
+  warnings        String?  // JSON array of warnings
+  suggestions     String   // JSON array of suggestions
+  originalCode    String
+  rectifiedCode   String?
+  errorCount      Int      @default(0)
+  warningCount    Int      @default(0)
+  fixedCount      Int      @default(0)
+  isFixed         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Backup {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  type            String   // 'full', 'incremental'
+  filePath        String
+  size            Int
+  status          String   @default("completed")
+  createdAt       DateTime @default(now())
+  restoredAt      DateTime?
+}
+
+model Report {
+  id              String   @id @default(cuid())
+  userId          String
+  scanId          String
+  name            String
+  format          String   // 'pdf', 'json', 'csv', 'html'
+  filePath        String
+  size            Int
+  generatedAt     DateTime @default(now())
+  downloadedCount Int      @default(0)
+}

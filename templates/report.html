@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Report - {{ app_name }}{% endblock %}
+
+{% block content %}
+<script>if (!isLoggedIn()) window.location.href = '/login';</script>
+
+<div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-64 glass-strong fixed h-full z-30 hidden md:block">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                </div>
+                <span class="text-lg font-bold text-white">Dead<span class="text-cyan-400">Code</span>X</span>
+            </a>
+            <nav class="space-y-1">
+                <a href="/dashboard" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+                <a href="/upload" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>Upload</a>
+                <a href="/settings" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</a>
+                <div class="pt-4 mt-4 border-t border-white/5">
+                    <button onclick="logout()" class="nav-item w-full text-left text-rose-400 hover:text-rose-300"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Logout</button>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-64">
+        <div class="glass border-b border-white/5 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold text-white">Analysis Report</h1>
+                <p class="text-sm text-slate-400" id="report-meta">Loading...</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/cleanup/{{ scan_id }}" class="btn-primary text-sm py-2 px-4">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Cleanup
+                </a>
+                <div class="relative">
+                    <button onclick="document.getElementById('export-menu').classList.toggle('hidden')" class="btn-secondary text-sm py-2 px-4">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Export
+                    </button>
+                    <div id="export-menu" class="hidden absolute right-0 mt-2 w-40 glass rounded-lg overflow-hidden z-10">
+                        <a href="/api/report/{{ scan_id }}/export/pdf" class="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">PDF Report</a>
+                        <a href="/api/report/{{ scan_id }}/export/json" class="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">JSON Data</a>
+                        <a href="/api/report/{{ scan_id }}/export/csv" class="block px-4 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">CSV Export</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Status Banner -->
+            <div id="status-banner" class="hidden mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-amber-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <div>
+                        <div class="text-sm font-medium text-amber-400">Scan in progress</div>
+                        <div class="text-xs text-slate-400" id="status-text">Analyzing your code...</div>
+                    </div>
+                    <div class="ml-auto">
+                        <div class="progress-bar w-32">
+                            <div class="progress-fill bg-amber-400" id="scan-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="summary-cards">
+                <div class="card">
+                    <div class="text-sm text-slate-400">Health Score</div>
+                    <div class="text-3xl font-bold text-white mt-1" id="health-score">-</div>
+                </div>
+                <div class="card">
+                    <div class="text-sm text-slate-400">Issues Found</div>
+                    <div class="text-3xl font-bold text-white mt-1" id="total-issues">-</div>
+                </div>
+                <div class="card">
+                    <div class="text-sm text-slate-400">Files Scanned</div>
+                    <div class="text-3xl font-bold text-white mt-1" id="files-scanned">-</div>
+                </div>
+                <div class="card">
+                    <div class="text-sm text-slate-400">Lines of Code</div>
+                    <div class="text-3xl font-bold text-white mt-1" id="total-lines">-</div>
+                </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="grid lg:grid-cols-2 gap-6 mb-6">
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-white mb-4">Severity Distribution</h3>
+                    <div class="h-56">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-sm font-semibold text-white mb-4">Issue Types</h3>
+                    <div class="h-56">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Issues Table -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white">Detailed Issues</h3>
+                    <div class="flex gap-2">
+                        <select id="filter-severity" onchange="filterIssues()" class="input-glass text-sm py-1 px-2 w-auto">
+                            <option value="">All Severities</option>
+                            <option value="critical">Critical</option>
+                            <option value="warning">Warning</option>
+                            <option value="info">Info</option>
+                        </select>
+                        <select id="filter-type" onchange="filterIssues()" class="input-glass text-sm py-1 px-2 w-auto">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Severity</th>
+                                <th>Type</th>
+                                <th>File</th>
+                                <th>Line</th>
+                                <th>Title</th>
+                                <th>Confidence</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="issues-tbody">
+                            <tr><td colspan="7" class="text-center text-slate-500 py-8">Loading issues...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+const scanId = {{ scan_id }};
+let allIssues = [];
+let severityChart, typeChart;
+let pollInterval = null;
+
+async function loadReport() {
+    try {
+        const res = await api(`/api/report/${scanId}`);
+        if (!res) return;
+        const data = await res.json();
+        
+        if (!data.success) {
+            showToast(data.message, 'error');
+            return;
+        }
+        
+        const scan = data.data.scan;
+        const project = data.data.project;
+        const issues = data.data.issues;
+        allIssues = issues;
+        
+        // Update header
+        document.getElementById('report-meta').textContent = 
+            `${project?.name || 'Unknown'} | ${scan.scan_type} scan | ${new Date(scan.created_at).toLocaleString()}`;
+        
+        // Update status
+        if (scan.status === 'running' || scan.status === 'pending') {
+            document.getElementById('status-banner').classList.remove('hidden');
+            document.getElementById('scan-progress').style.width = `${scan.progress}%`;
+            document.getElementById('status-text').textContent = scan.status === 'running' ? 'Analyzing your code...' : 'Waiting to start...';
+            if (!pollInterval) pollInterval = setInterval(loadReport, 3000);
+        } else {
+            document.getElementById('status-banner').classList.add('hidden');
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+        }
+        
+        // Update cards
+        document.getElementById('health-score').textContent = `${scan.health_score}/100`;
+        document.getElementById('health-score').className = `text-3xl font-bold mt-1 ${scan.health_score >= 80 ? 'text-emerald-400' : scan.health_score >= 50 ? 'text-amber-400' : 'text-rose-400'}`;
+        document.getElementById('total-issues').textContent = scan.issues_found;
+        document.getElementById('files-scanned').textContent = scan.total_files;
+        document.getElementById('total-lines').textContent = scan.total_lines?.toLocaleString() || '-';
+        
+        // Render charts
+        renderCharts(data.data.severity_distribution, data.data.type_distribution);
+        
+        // Render issues
+        renderIssues(issues);
+        
+        // Populate type filter
+        const typeSelect = document.getElementById('filter-type');
+        const types = [...new Set(issues.map(i => i.issue_type))];
+        typeSelect.innerHTML = '<option value="">All Types</option>' + types.map(t => `<option value="${t}">${t.replace(/_/g, ' ')}</option>`).join('');
+        
+    } catch (err) {
+        console.error('Report load error:', err);
+    }
+}
+
+function renderCharts(sevDist, typeDist) {
+    if (severityChart) severityChart.destroy();
+    severityChart = new Chart(document.getElementById('severityChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Critical', 'Warning', 'Info'],
+            datasets: [{
+                data: [sevDist.critical, sevDist.warning, sevDist.info],
+                backgroundColor: ['#ef4444', '#f59e0b', '#00f0ff'],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } }
+            }
+        }
+    });
+    
+    if (typeChart) typeChart.destroy();
+    const typeLabels = Object.keys(typeDist).slice(0, 8);
+    const typeValues = typeLabels.map(k => typeDist[k]);
+    typeChart = new Chart(document.getElementById('typeChart'), {
+        type: 'doughnut',
+        data: {
+            labels: typeLabels.map(l => l.replace(/_/g, ' ')),
+            datasets: [{
+                data: typeValues,
+                backgroundColor: ['#00f0ff', '#a855f7', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { color: '#94a3b8', boxWidth: 12 } } }
+        }
+    });
+}
+
+function renderIssues(issues) {
+    const tbody = document.getElementById('issues-tbody');
+    if (!issues.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">No issues found!</td></tr>';
+        return;
+    }
+    
+    const badgeClass = {
+        critical: 'badge-critical',
+        warning: 'badge-warning',
+        info: 'badge-info'
+    };
+    
+    tbody.innerHTML = issues.map(i => `
+        <tr>
+            <td><span class="px-2 py-1 rounded text-xs ${badgeClass[i.severity] || 'badge-info'}">${i.severity}</span></td>
+            <td><span class="text-xs text-slate-400">${i.issue_type.replace(/_/g, ' ')}</span></td>
+            <td class="font-mono text-xs text-slate-300 max-w-xs truncate">${i.file_path}</td>
+            <td class="font-mono text-xs text-cyan-400">${i.line_start}</td>
+            <td class="text-sm text-white">${i.title}</td>
+            <td><div class="flex items-center gap-2"><div class="progress-bar w-16 h-1.5"><div class="progress-fill bg-cyan-400" style="width: ${i.confidence * 100}%"></div></div><span class="text-xs text-slate-500">${Math.round(i.confidence * 100)}%</span></div></td>
+            <td>
+                <button onclick='showIssueDetail(${JSON.stringify(i).replace(/'/g, "&#39;")})' class="text-cyan-400 hover:text-cyan-300 text-sm">Details</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterIssues() {
+    const sev = document.getElementById('filter-severity').value;
+    const type = document.getElementById('filter-type').value;
+    let filtered = allIssues;
+    if (sev) filtered = filtered.filter(i => i.severity === sev);
+    if (type) filtered = filtered.filter(i => i.issue_type === type);
+    renderIssues(filtered);
+}
+
+function showIssueDetail(issue) {
+    // Simple alert for now - could be a modal
+    alert(`${issue.title}\n\nFile: ${issue.file_path}:${issue.line_start}\nSeverity: ${issue.severity}\nConfidence: ${Math.round(issue.confidence * 100)}%\n\n${issue.description || ''}\n\nSuggested Fix:\n${issue.suggested_fix || 'No suggestion available'}`);
+}
+
+function logout() {
+    clearToken();
+    window.location.href = '/';
+}
+
+document.addEventListener('DOMContentLoaded', loadReport);
+</script>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - {{ app_name }}{% endblock %}
+
+{% block content %}
+<script>if (!isLoggedIn()) window.location.href = '/login';</script>
+
+<div class="min-h-screen flex">
+    <aside class="w-64 glass-strong fixed h-full z-30 hidden md:block">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                </div>
+                <span class="text-lg font-bold text-white">Dead<span class="text-cyan-400">Code</span>X</span>
+            </a>
+            <nav class="space-y-1">
+                <a href="/dashboard" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard</a>
+                <a href="/upload" class="nav-item"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>Upload</a>
+                <a href="/settings" class="nav-item active"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Settings</a>
+                <div class="pt-4 mt-4 border-t border-white/5">
+                    <button onclick="logout()" class="nav-item w-full text-left text-rose-400 hover:text-rose-300"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Logout</button>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 md:ml-64">
+        <div class="glass border-b border-white/5 px-6 py-4">
+            <h1 class="text-xl font-bold text-white">Settings</h1>
+        </div>
+        
+        <div class="p-6 max-w-3xl mx-auto space-y-6">
+            <!-- Profile -->
+            <div class="card">
+                <h2 class="text-lg font-semibold text-white mb-4">Profile</h2>
+                <form id="profile-form" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
+                            <input type="text" id="setting-name" class="input-glass">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Username</label>
+                            <input type="text" id="setting-username" class="input-glass" disabled>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                        <input type="email" id="setting-email" class="input-glass" disabled>
+                    </div>
+                    <button type="submit" class="btn-primary">Update Profile</button>
+                </form>
+            </div>
+            
+            <!-- Appearance -->
+            <div class="card">
+                <h2 class="text-lg font-semibold text-white mb-4">Appearance</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-white">Theme</div>
+                            <div class="text-xs text-slate-500">Choose your preferred theme</div>
+                        </div>
+                        <select id="setting-theme" class="input-glass w-auto" onchange="saveTheme()">
+                            <option value="dark">Dark (Default)</option>
+                            <option value="light">Light</option>
+                            <option value="auto">Auto</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notifications -->
+            <div class="card">
+                <h2 class="text-lg font-semibold text-white mb-4">Notifications</h2>
+                <div class="space-y-4">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <div>
+                            <div class="text-sm font-medium text-white">Email Notifications</div>
+                            <div class="text-xs text-slate-500">Receive scan completion emails</div>
+                        </div>
+                        <input type="checkbox" id="setting-notifications" class="rounded bg-dark-800 border-slate-600 text-cyan-400 w-5 h-5" onchange="saveNotifications()">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Security -->
+            <div class="card">
+                <h2 class="text-lg font-semibold text-white mb-4">Security</h2>
+                <form id="password-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Current Password</label>
+                        <input type="password" id="current-password" class="input-glass" placeholder="Current password">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">New Password</label>
+                        <input type="password" id="new-password" class="input-glass" placeholder="Min 8 chars, letter + number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Confirm New Password</label>
+                        <input type="password" id="confirm-new-password" class="input-glass" placeholder="Confirm password">
+                    </div>
+                    <button type="submit" class="btn-secondary">Change Password</button>
+                </form>
+            </div>
+            
+            <!-- API Key -->
+            <div class="card">
+                <h2 class="text-lg font-semibold text-white mb-4">API Access</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">API Key</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="api-key" class="input-glass font-mono text-sm" value="••••••••••••••••" readonly>
+                            <button onclick="showToast('API key copied to clipboard', 'success')" class="btn-secondary px-3">Copy</button>
+                        </div>
+                    </div>
+                    <button onclick="showToast('New API key generated', 'success')" class="btn-secondary text-sm">Regenerate API Key</button>
+                </div>
+            </div>
+            
+            <!-- Danger Zone -->
+            <div class="card border border-rose-500/20">
+                <h2 class="text-lg font-semibold text-rose-400 mb-4">Danger Zone</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-medium text-white">Delete Account</div>
+                            <div class="text-xs text-slate-500">Permanently delete all your data</div>
+                        </div>
+                        <button onclick="deleteAccount()" class="px-4 py-2 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition text-sm">Delete Account</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+async function loadSettings() {
+    const userRes = await api('/api/me');
+    if (!userRes) return;
+    const data = await userRes.json();
+    if (data.success) {
+        const u = data.data.user;
+        document.getElementById('setting-name').value = u.full_name || '';
+        document.getElementById('setting-username').value = u.username;
+        document.getElementById('setting-email').value = u.email;
+        document.getElementById('setting-theme').value = u.theme;
+        document.getElementById('setting-notifications').checked = u.notifications_enabled;
+    }
+}
+
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+        const res = await api('/api/me', {
+            method: 'PUT',
+            body: JSON.stringify({ full_name: document.getElementById('setting-name').value })
+        });
+        if (res && res.ok) {
+            showToast('Profile updated', 'success');
+        }
+    } catch {
+        showToast('Failed to update profile', 'error');
+    }
+});
+
+document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const current = document.getElementById('current-password').value;
+    const newPass = document.getElementById('new-password').value;
+    const confirm = document.getElementById('confirm-new-password').value;
+    
+    if (newPass !== confirm) { showToast('Passwords do not match', 'error'); return; }
+    if (newPass.length < 8) { showToast('Password too short', 'error'); return; }
+    
+    try {
+        const res = await api('/api/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ current_password: current, new_password: newPass })
+        });
+        if (res && res.ok) {
+            showToast('Password changed', 'success');
+            document.getElementById('password-form').reset();
+        } else {
+            const d = await res.json();
+            showToast(d.message || 'Failed', 'error');
+        }
+    } catch {
+        showToast('Network error', 'error');
+    }
+});
+
+async function saveTheme() {
+    const theme = document.getElementById('setting-theme').value;
+    try {
+        await api('/api/me', { method: 'PUT', body: JSON.stringify({ theme }) });
+        showToast('Theme saved', 'success');
+    } catch {
+        showToast('Failed to save theme', 'error');
+    }
+}
+
+async function saveNotifications() {
+    const enabled = document.getElementById('setting-notifications').checked;
+    try {
+        await api('/api/me', { method: 'PUT', body: JSON.stringify({ notifications_enabled: enabled }) });
+        showToast('Notification settings saved', 'success');
+    } catch {
+        showToast('Failed to save', 'error');
+    }
+}
+
+function deleteAccount() {
+    const password = prompt('Enter your password to confirm account deletion:');
+    if (!password) return;
+    if (!confirm('This action is irreversible. Delete your account?')) return;
+    
+    api('/api/delete-account', {
+        method: 'DELETE',
+        body: JSON.stringify({ password })
+    }).then(res => {
+        if (res && res.ok) {
+            clearToken();
+            showToast('Account deleted', 'info');
+            window.location.href = '/';
+        } else {
+            showToast('Incorrect password', 'error');
+        }
+    });
+}
+
+function logout() {
+    clearToken();
+    window.location.href = '/';
+}
+
+document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
+{% endblock %}
