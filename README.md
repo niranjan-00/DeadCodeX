@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DeadCodeX - AI-Powered Code Analysis Platform
 
 An intelligent code error detection and rectification platform powered by AI. Upload your code, connect to cloud services, and get instant error analysis with AI-powered fixes.
@@ -225,3 +226,6 @@ MIT License - see LICENSE file for details.
 ## Support
 
 For issues and questions, please open an issue on GitHub.
+=======
+# DeadCodeX
+>>>>>>> 0dfb62c78b8a30993a5c42a1042bd911e4da8ed5
