@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% set active = 'dashboard' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="p-4 md:p-8 flex-1 flex flex-col">
+  <header class="flex flex-wrap justify-between items-center gap-4 mb-8 pt-8 md:pt-0">
+    <div>
+      <h2 class="font-h2 text-on-surface">System Overview</h2>
+      <p class="font-body-md text-slate-400">Welcome back, <span class="text-emerald-400 font-semibold">{{ user.username }}</span></p>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="{{ url_for('upload') }}" class="bg-tertiary text-on-tertiary px-5 py-2 rounded font-label-sm text-sm font-bold hover:brightness-110">NEW SCAN</a>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-6" aria-label="Statistics">
+    <div class="glass-panel p-6 rounded-xl flex flex-col gap-2">
+      <span class="text-slate-500 font-label-sm uppercase tracking-widest">Total Scans</span>
+      <div class="flex items-end justify-between"><span class="text-3xl font-h2 text-white" data-stat="total">{{ total_scans }}</span>
+        <span class="material-symbols-outlined text-tertiary opacity-50" aria-hidden="true">folder_open</span></div>
+    </div>
+    <div class="glass-panel p-6 rounded-xl flex flex-col gap-2">
+      <span class="text-slate-500 font-label-sm uppercase tracking-widest">Completed</span>
+      <div class="flex items-end justify-between"><span class="text-3xl font-h2 text-white" data-stat="completed">{{ completed_scans }}</span>
+        <span class="material-symbols-outlined text-emerald-400 opacity-50" aria-hidden="true">check_circle</span></div>
+    </div>
+    <div class="glass-panel p-6 rounded-xl flex flex-col gap-2">
+      <span class="text-slate-500 font-label-sm uppercase tracking-widest">Findings (all projects)</span>
+      <div class="flex items-end justify-between"><span class="text-3xl font-h2 text-white" data-stat="findings">{{ stats.confirmed + stats.potential }}</span>
+        <span class="material-symbols-outlined text-error opacity-50" aria-hidden="true">functions</span></div>
+      <span class="text-[11px] text-slate-500 font-label-sm">{{ stats.confirmed }} CONFIRMED · {{ stats.potential }} POTENTIAL</span>
+    </div>
+    <div class="glass-panel p-6 rounded-xl flex flex-col gap-2 border-l-4 border-l-tertiary">
+      <span class="text-slate-500 font-label-sm uppercase tracking-widest">Redundant Code</span>
+      <div class="flex items-end justify-between"><span class="text-3xl font-h2 text-tertiary" data-stat="pct">{% if completed_scans %}{{ stats.pct }}%{% else %}–{% endif %}</span>
+        <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1;" aria-hidden="true">trending_up</span></div>
+      <span class="text-[11px] text-slate-500 font-label-sm">{{ stats.redundant_bytes | size }} REMOVABLE</span>
+    </div>
+  </section>
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-8">
+    <div class="glass-panel p-4 rounded-xl"><span class="text-slate-500 font-label-sm uppercase tracking-widest text-[11px]">Cleanups completed</span><div class="text-2xl text-white mt-1">{{ stats.cleanups }}</div></div>
+    <div class="glass-panel p-4 rounded-xl"><span class="text-slate-500 font-label-sm uppercase tracking-widest text-[11px]">Space saved by cleanups</span><div class="text-2xl text-white mt-1">{{ stats.bytes_saved | size }}</div></div>
+    <div class="glass-panel p-4 rounded-xl"><span class="text-slate-500 font-label-sm uppercase tracking-widest text-[11px]">Latest report</span>
+      <div class="mt-1">{% if latest %}<a class="text-tertiary hover:underline" href="{{ url_for('analysis', scan_id=latest.id) }}">{{ latest.project_name }}</a> <span class="text-slate-500 text-xs">· {{ latest.finished_at | ago }}</span>{% else %}<span class="text-slate-500">None yet</span>{% endif %}</div></div>
+  </section>
+
+  <section class="flex-1 glass-panel rounded-xl overflow-hidden flex flex-col mb-8">
+    <div class="p-6 border-b border-white/5 flex justify-between items-center">
+      <h3 class="font-h3 text-on-surface">Recent Scans</h3>
+      <a href="{{ url_for('upload') }}" class="text-xs font-label-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><span class="material-symbols-outlined text-sm" aria-hidden="true">add</span>NEW SCAN</a>
+    </div>
+    <div class="overflow-x-auto custom-scrollbar">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-surface-container-low text-slate-500 font-label-sm uppercase tracking-widest text-[11px]">
+          <tr><th class="px-6 py-4">Project Name</th><th class="px-6 py-4">Source</th><th class="px-6 py-4">Date</th><th class="px-6 py-4">Status</th><th class="px-6 py-4">Results</th><th class="px-6 py-4">Actions</th></tr>
+        </thead>
+        <tbody class="divide-y divide-white/5 text-sm font-body-md">
+          {% for scan in scans %}
+          <tr class="hover:bg-white/5 transition-colors" data-scan="{{ scan.id }}" data-status="{{ scan.status }}">
+            <td class="px-6 py-4 font-code-md text-on-surface"><a class="hover:text-tertiary" href="{{ url_for('project', scan_id=scan.id) }}">{{ scan.project_name }}</a></td>
+            <td class="px-6 py-4 text-slate-500 text-xs">{% if scan.source_type == 'github' %}<span class="material-symbols-outlined text-xs align-middle" aria-hidden="true">terminal</span> {{ scan.filename }}{% if scan.branch %}@{{ scan.branch }}{% endif %}{% else %}{{ scan.filename or '–' }}{% endif %}{% if scan.source_type == 'legacy' %} <span class="text-amber-400">(legacy)</span>{% endif %}</td>
+            <td class="px-6 py-4 text-slate-500">{{ scan.date.strftime('%b %d, %Y') }}</td>
+            <td class="px-6 py-4">
+              {% if scan.status == 'Completed' %}<span class="flex items-center gap-2 text-tertiary"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Completed</span>
+              {% elif scan.status in ('Processing', 'Importing') %}<span class="flex items-center gap-2 text-secondary"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>{{ scan.status }} {{ scan.progress or 0 }}%</span>
+              {% elif scan.status == 'Failed' %}<span class="flex items-center gap-2 text-error" title="{{ scan.error_message }}"><span class="w-1.5 h-1.5 rounded-full bg-error"></span>Failed</span>
+              {% else %}<span class="flex items-center gap-2 text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>{{ scan.status }}</span>{% endif %}
+            </td>
+            <td class="px-6 py-4 font-code-md {% if scan.status == 'Completed' %}text-tertiary{% else %}text-slate-600{% endif %}">
+              {% if scan.status == 'Completed' %}{{ scan.confirmed_count + scan.potential_count }} findings · {{ scan.cleanup_percentage }}%{% else %}–{% endif %}
+            </td>
+            <td class="px-6 py-4 flex gap-3">
+              <a href="{{ url_for('analysis', scan_id=scan.id) }}" class="text-xs text-primary hover:text-primary/80">View</a>
+              {% if scan.status == 'Completed' %}<a href="{{ url_for('cleanup', scan_id=scan.id) }}" class="text-xs text-tertiary hover:text-tertiary/80">Cleanup</a>{% endif %}
+              <a href="{{ url_for('project', scan_id=scan.id) }}" class="text-xs text-slate-400 hover:text-white">Details</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="px-6 py-12 text-center text-slate-500">No scans yet. <a href="{{ url_for('upload') }}" class="text-emerald-400 hover:underline">Upload your first project →</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+/* Refresh the page once when a scan that was running on load finishes. */
+(function () {
+  var running = document.querySelectorAll('tr[data-status="Processing"],tr[data-status="Importing"]');
+  if (!running.length) return;
+  var t = setInterval(function () {
+    var pending = 0, calls = [];
+    running.forEach(function (row) {
+      calls.push(dcx.api('/api/scan_status/' + row.dataset.scan).then(function (d) {
+        if (d.status === 'Processing' || d.status === 'Importing') pending++;
+      }).catch(function () {}));
+    });
+    Promise.all(calls).then(function () { if (!pending) { clearInterval(t); location.reload(); } });
+  }, 3000);
+})();
+</script>
+{% endblock %}

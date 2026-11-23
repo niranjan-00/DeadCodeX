@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% set active = 'rectifier' %}
+{% block title %}Rectifier{% endblock %}
+{% block content %}
+<div class="p-4 md:p-8">
+<header class="mb-6 pt-8 md:pt-0"><h2 class="font-h1 text-h1 text-on-background">Code Rectifier</h2>
+  <p class="text-slate-400 mt-xs">Inspect each file with its findings highlighted. Fixes are applied from the <a class="text-tertiary underline" {% if scan %}href="{{ url_for('analysis', scan_id=scan.id) }}"{% else %}href="{{ url_for('upload') }}"{% endif %}>report</a> or <a class="text-tertiary underline" {% if scan %}href="{{ url_for('cleanup', scan_id=scan.id) }}"{% else %}href="{{ url_for('upload') }}"{% endif %}>cleanup</a> pages, never from here.</p></header>
+{% if not scan %}
+<div class="glass-panel rounded-xl p-8 text-center text-slate-300">No completed analysis yet. <a class="text-tertiary underline" href="{{ url_for('upload') }}">Upload a project</a> to inspect its files.</div>
+{% elif not files %}
+<div class="glass-panel rounded-xl p-8 text-center text-slate-300">No code-level findings in <strong>{{ scan.project_name }}</strong>. Nothing to inspect.</div>
+{% else %}
+<div class="grid grid-cols-12 gap-gutter">
+  <aside class="col-span-12 lg:col-span-4 glass-panel rounded-xl p-4 max-h-[70vh] overflow-auto custom-scrollbar">
+    <p class="text-label-sm font-label-sm text-slate-500 mb-3">FILES WITH FINDINGS ({{ files | length }})</p>
+    <ul class="space-y-1">
+    {% for f, n in files %}
+      <li><a href="{{ url_for('rectifier', scan_id=scan.id, file=f) }}" class="flex justify-between gap-2 px-3 py-2 rounded-lg text-sm {{ 'bg-tertiary/10 text-tertiary' if f == current_file else 'text-slate-300 hover:bg-white/5' }}" {% if f == current_file %}aria-current="page"{% endif %}>
+        <span class="font-code-md break-all">{{ f }}</span><span class="shrink-0 text-xs bg-slate-800 rounded px-2 py-0.5">{{ n }}</span></a></li>
+    {% endfor %}</ul>
+  </aside>
+  <section class="col-span-12 lg:col-span-8 space-y-gutter min-w-0">
+    <div class="rounded-xl overflow-hidden border border-white/10">
+      <div class="bg-surface-container-high px-4 py-2 font-code-md text-sm text-slate-300 break-all">{{ current_file }}</div>
+      {% if code_lines %}
+      {% set hl = {} %}{% for f in findings %}{% if f.line %}{% for n in range(f.line, (f.end_line or f.line) + 1) %}{% if hl.update({n: f.id}) %}{% endif %}{% endfor %}{% endif %}{% endfor %}
+      <div class="code-block overflow-auto max-h-[60vh] custom-scrollbar text-sm"><table class="w-full border-collapse"><tbody>
+      {% for line in code_lines %}{% set n = loop.index %}
+        <tr id="L{{ n }}" class="{{ 'bg-error-container/30' if n in hl }}"><td class="select-none text-right pr-3 pl-3 text-slate-600 align-top w-12">{{ n }}</td>
+        <td class="pr-4"><pre class="whitespace-pre text-slate-200 font-code-md">{{ line }}</pre></td></tr>
+      {% endfor %}</tbody></table></div>
+      {% else %}<p class="p-4 text-slate-500 text-sm">This file cannot be shown (missing, too large, or removed by a cleanup).</p>{% endif %}
+    </div>
+    {% for f in findings %}
+    <article class="glass-panel rounded-xl p-4" id="f{{ f.id }}">
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <h4 class="text-white font-bold">{{ f.title }}</h4>
+        <span class="text-[10px] px-1.5 py-0.5 rounded {{ 'bg-tertiary/10 text-tertiary' if f.certainty == 'confirmed' else 'bg-amber-500/10 text-amber-300' }}">{{ f.certainty }} {{ f.confidence }}%</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">{{ f.severity }}</span>
+        {% if f.line %}<a class="text-xs text-tertiary underline ml-auto" href="#L{{ f.line }}">line {{ f.line }}</a>{% endif %}</div>
+      {% set d = f.details %}
+      <dl class="text-sm text-slate-300 space-y-2">
+        {% if d.why %}<div><dt class="text-slate-500 text-xs uppercase">Why this matters</dt><dd>{{ d.why }}</dd></div>{% endif %}
+        {% if d.evidence %}<div><dt class="text-slate-500 text-xs uppercase">Evidence</dt><dd><ul class="list-disc ml-5">{% for e in d.evidence %}<li>{{ e }}</li>{% endfor %}</ul></dd></div>{% endif %}
+        {% if d.recommendation %}<div><dt class="text-slate-500 text-xs uppercase">Recommendation</dt><dd>{{ d.recommendation }}</dd></div>{% endif %}
+        <div><dt class="text-slate-500 text-xs uppercase">Certainty</dt><dd>{{ d.certainty_text }} {{ d.fix_text }}</dd></div>
+      </dl>
+      {% if d.before or d.after %}<div class="grid md:grid-cols-2 gap-2 mt-3">
+        {% if d.before %}<div><p class="text-xs text-slate-500 mb-1">Before</p><pre class="code-block p-2 rounded text-xs text-slate-300 overflow-auto font-code-md">{{ d.before }}</pre></div>{% endif %}
+        {% if d.after %}<div><p class="text-xs text-slate-500 mb-1">After</p><pre class="code-block p-2 rounded text-xs text-tertiary overflow-auto font-code-md">{{ d.after }}</pre></div>{% endif %}</div>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+</div>
+{% endif %}
+</div>
+{% endblock %}

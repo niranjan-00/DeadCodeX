@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set active = 'upload' %}
+{% block title %}Upload{% endblock %}
+{% block content %}
+<div class="flex-1 flex flex-col items-center justify-center p-4 md:p-10">
+ <section class="max-w-2xl w-full">
+  <header class="mb-8 text-center pt-8 md:pt-0">
+    <h2 class="text-4xl font-bold text-white mb-2">DeadCode Identification</h2>
+    <p class="text-slate-400">Upload a ZIP archive or import a GitHub repository. Nothing in your project is ever executed.</p>
+  </header>
+  <div role="tablist" class="flex gap-2 mb-4">
+    <button role="tab" id="tab-zip" aria-selected="true" aria-controls="panel-zip" class="px-4 py-2 rounded-t font-label-sm text-sm uppercase tracking-widest border-b-2 border-emerald-500 text-emerald-400">ZIP upload</button>
+    <button role="tab" id="tab-github" aria-selected="false" aria-controls="panel-github" class="px-4 py-2 rounded-t font-label-sm text-sm uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-white">GitHub repository</button>
+  </div>
+
+  <form id="panel-zip" role="tabpanel" aria-labelledby="tab-zip" method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="glass-panel p-8 rounded-xl flex flex-col items-center text-center border-2 border-dashed border-slate-700 hover:border-emerald-500 transition-colors">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="w-full mb-4 text-left">
+      <label for="project_name" class="block text-xs text-slate-400 uppercase mb-2">Project Name</label>
+      <input id="project_name" type="text" name="project_name" maxlength="100" placeholder="e.g. My Startup App" class="w-full bg-[#020C1B] border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none">
+    </div>
+    <div class="w-full mb-4 text-left">
+      <label for="subdir" class="block text-xs text-slate-400 uppercase mb-2">Sub-directory to analyze <span class="normal-case text-slate-600">(optional)</span></label>
+      <input id="subdir" type="text" name="subdir" placeholder="e.g. backend/src" class="w-full bg-[#020C1B] border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none">
+    </div>
+    <label for="file-upload" class="flex flex-col items-center justify-center w-full h-32 cursor-pointer" id="drop">
+      <span class="material-symbols-outlined text-4xl text-emerald-400 mb-2" aria-hidden="true">cloud_upload</span>
+      <span class="mb-1 text-sm text-slate-400"><span class="font-bold">Click to upload</span> or drag and drop</span>
+      <span class="text-xs text-slate-500">.zip only · max {{ st['upload.max_zip_mb'] }} MB (Settings → Upload limits)</span>
+      <input id="file-upload" name="file" class="sr-only" type="file" accept=".zip,application/zip" required />
+    </label>
+    <p id="file-name" class="mt-2 text-sm text-emerald-400 font-mono hidden"></p>
+    <button type="submit" class="mt-6 bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 px-8 rounded-lg flex items-center gap-2 transition"><span class="material-symbols-outlined" aria-hidden="true">bolt</span>Start Scan</button>
+  </form>
+
+  <form id="panel-github" role="tabpanel" aria-labelledby="tab-github" method="POST" action="{{ url_for('upload_github') }}" class="hidden glass-panel p-8 rounded-xl text-left">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-4"><label for="repo_url" class="block text-xs text-slate-400 uppercase mb-2">Repository URL</label>
+      <input id="repo_url" type="url" name="repo_url" required placeholder="https://github.com/owner/repo" class="w-full bg-[#020C1B] border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div><label for="branch" class="block text-xs text-slate-400 uppercase mb-2">Branch <span class="normal-case text-slate-600">(default branch if empty)</span></label>
+        <input id="branch" type="text" name="branch" class="w-full bg-[#020C1B] border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"></div>
+      <div><label for="gh_subdir" class="block text-xs text-slate-400 uppercase mb-2">Sub-directory <span class="normal-case text-slate-600">(optional)</span></label>
+        <input id="gh_subdir" type="text" name="subdir" class="w-full bg-[#020C1B] border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"></div>
+    </div>
+    <div class="mb-4"><label for="gh_name" class="block text-xs text-slate-400 uppercase mb-2">Project Name <span class="normal-case text-slate-600">(optional)</span></label>
+      <input id="gh_name" type="text" name="project_name" maxlength="100" class="w-full bg-[#020C1B] border border-slate-700 rounded p-3 text-white focus:border-emerald-500 outline-none"></div>
+    <p class="text-xs text-slate-500 mb-4">
+      {% if token_status == 'saved' %}<span class="text-emerald-400">A GitHub token is saved</span> - private repositories you can access will work.
+      {% elif token_status == 'environment' %}Using the server's DEADCODEX_GITHUB_TOKEN for private repositories.
+      {% else %}Public repositories only. For private repositories add a token in <a class="text-emerald-400 hover:underline" href="{{ url_for('settings') }}#github">Settings</a>.{% endif %}
+      The repository is downloaded as a ZIP through the GitHub API - no <code>git</code> and no repository scripts are executed.</p>
+    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 px-8 rounded-lg flex items-center gap-2 transition"><span class="material-symbols-outlined" aria-hidden="true">download</span>Import &amp; Scan</button>
+  </form>
+ </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var tabs = {zip: ['tab-zip', 'panel-zip'], github: ['tab-github', 'panel-github']};
+  function show(which) {
+    Object.keys(tabs).forEach(function (k) {
+      var on = k === which, t = document.getElementById(tabs[k][0]), p = document.getElementById(tabs[k][1]);
+      t.setAttribute('aria-selected', on); p.classList.toggle('hidden', !on);
+      t.className = 'px-4 py-2 rounded-t font-label-sm text-sm uppercase tracking-widest border-b-2 ' + (on ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-white');
+    });
+  }
+  Object.keys(tabs).forEach(function (k) { document.getElementById(tabs[k][0]).addEventListener('click', function () { show(k); }); });
+  if (location.hash === '#github') show('github');
+  var fi = document.getElementById('file-upload'), nm = document.getElementById('file-name'), drop = document.getElementById('drop');
+  fi.addEventListener('change', function () { if (fi.files.length) { nm.textContent = 'Selected: ' + fi.files[0].name + ' (' + dcx.size(fi.files[0].size) + ')'; nm.classList.remove('hidden'); } });
+  ['dragover', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'drop' && e.dataTransfer.files.length) { fi.files = e.dataTransfer.files; fi.dispatchEvent(new Event('change')); } }); });
+})();
+</script>
+{% endblock %}

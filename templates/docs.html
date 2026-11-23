@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% set active = 'docs' %}
+{% block title %}Documentation{% endblock %}
+{% block content %}
+<div class="p-4 md:p-8 max-w-5xl">
+<header class="mb-6 pt-8 md:pt-0"><h2 class="font-h1 text-h1 text-on-background">Documentation</h2>
+  <p class="text-slate-400 mt-xs">Generated from the running application: the API table, settings and language lists below are read from the code, not typed by hand.</p></header>
+<nav class="flex flex-wrap gap-2 mb-8 text-sm" aria-label="Contents">
+{% for a, n in [('install','Install & start'),('languages','Languages & limits'),('upload','ZIP & GitHub'),('reports','Reports'),('fixes','Fixes'),('cleanup','Cleanup & rollback'),('settings','Settings'),('api','API'),('db','Database'),('security','Security'),('trouble','Troubleshooting'),('faq','FAQ')] %}
+<a href="#{{ a }}" class="px-3 py-1 rounded-full border border-white/10 text-slate-300 hover:text-tertiary hover:border-tertiary/40">{{ n }}</a>{% endfor %}</nav>
+<div class="space-y-10 text-slate-300 leading-relaxed [&_h3]:text-white [&_h3]:font-h3 [&_h3]:text-xl [&_h3]:mb-3 [&_code]:font-code-md [&_code]:text-tertiary [&_pre]:code-block [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-auto [&_pre]:text-sm [&_ul]:list-disc [&_ul]:ml-6 [&_p]:mb-3">
+
+<section id="install"><h3>Install &amp; start (Windows)</h3>
+<pre>py -3 -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python app.py</pre>
+<p>Open <code>http://127.0.0.1:5000</code>, register an account and upload a project. The database and all uploaded workspaces live in the <code>instance/</code> folder and are created automatically. Upgrading an existing install is automatic: additive migrations run at startup and never reset data (<code>python -m deadcodex.migrations</code> runs them manually).</p>
+<p>Optional environment variables: <code>SECRET_KEY</code> (otherwise one is generated into <code>instance/secret_key</code>), <code>DEADCODEX_GITHUB_TOKEN</code> (server-wide fallback token), <code>FLASK_DEBUG=1</code>.</p></section>
+
+<section id="languages"><h3>Languages &amp; limits</h3>
+<ul><li><strong>Python</strong> ({{ py | join(', ') }}) - analysed with the real Python parser: unused imports, variables, functions, classes, unreachable code, dead branches.</li>
+<li><strong>JavaScript</strong> ({{ js | join(', ') }}) and <strong>TypeScript</strong> ({{ ts | join(', ') }}) - analysed with a lightweight lexer and rules. This is <em>heuristic</em>, not a full parser, so results are marked accordingly.</li>
+<li><strong>File-level checks</strong> for any language: cache/temp files, bundled dependency folders, exact duplicate files, unreferenced assets ({{ assets | join(', ') }}) and unreferenced modules.</li>
+<li>Other languages are counted but not analysed for code. Archives accepted: {{ archives | join(', ') }} only (TAR/GZ are not supported).</li></ul>
+<p>Default excluded folders: <code>{{ default_excludes | join(', ') }}</code> (editable in Settings).</p>
+<p><strong>Known limitations</strong> reported with every scan:</p>
+<ul>{% for l in limitations %}<li>{{ l }}</li>{% endfor %}</ul></section>
+
+<section id="upload"><h3>ZIP &amp; GitHub import</h3>
+<p>Both routes produce the same stored project and feed the same analyzer. Uploaded code is only <em>read</em> as text - never executed, imported or built.</p>
+<ul><li><strong>ZIP:</strong> the type, integrity and size are checked; entries with path traversal (ZIP-Slip), absolute paths, symlinks, special files, encrypted entries, duplicate names or suspicious compression ratios are rejected with a clear message. A single top-level folder is detected automatically as the project root.</li>
+<li><strong>GitHub:</strong> paste a repository URL (optionally a branch and sub-folder). The exact commit is recorded. Private repositories need a token saved under <a class="text-tertiary underline" href="{{ url_for('settings') }}#github">Settings</a>; it is encrypted at rest and only sent to api.github.com. Invalid URLs, missing/private repos, bad branches, rate limits and network failures each produce a specific error.</li></ul></section>
+
+<section id="reports"><h3>Reading a report</h3>
+<p>Each finding shows file, line, snippet, category, severity and confidence, plus an expandable explanation: why it is a problem, the evidence found, consequences, recommendation, a before/after view and whether it can be fixed automatically.</p>
+<ul><li><strong>Confirmed</strong> - established by the code structure and a project-wide search with no counter-evidence.</li><li><strong>Potential</strong> - might still be used dynamically (reflection, string lookups, public API, framework conventions). Treat as a lead.</li></ul>
+<p>Search and filters (category, certainty, severity, fix mode, review state, minimum confidence) are applied on the server. <em>Export JSON</em> downloads the full persisted report. Categories:</p>
+<ul>{% for k, v in labels.items() %}<li><code>{{ k }}</code> - {{ v }}</li>{% endfor %}</ul></section>
+
+<section id="fixes"><h3>Fixes (Precision Pruning)</h3>
+<p><em>Review Patterns</em> groups findings, shows evidence, risk and side effects, and lets you approve or reject each one. <em>Apply Global Fixes</em> previews an exact diff first; only approved or high-confidence automatic fixes are applied, each batch is syntax-checked and rolled back automatically if validation fails. Your original upload is never modified; changes happen in a separate working copy.</p></section>
+
+<section id="cleanup"><h3>Cleanup, backups, rollback, download</h3>
+<ul><li>The Cleanup page lists real candidates with sizes and reasons. <em>Select All Redundant</em> selects confirmed, automatically-fixable items.</li><li>Previews and the final log use the same planning code, so numbers match the real operation.</li><li>A backup of every touched file is made first. Uncertain, changed-since-scan, rejected or below-threshold items are skipped and listed with the reason.</li><li>Each run in the history can be rolled back (most recent first; files changed since are detected and block the rollback instead of being overwritten). A patch file (unified diff) is saved per run.</li><li><em>Download Cleaned ZIP</em> packages the current working copy.</li></ul>
+<p>Validation is <strong>syntax-only</strong>: Python is parsed, JavaScript/TypeScript is checked for balanced brackets and strings. Your project's own tests are never run, so run them yourself after downloading.</p></section>
+
+<section id="settings"><h3>Settings reference</h3>
+<div class="overflow-auto"><table class="w-full text-sm"><thead><tr class="text-left text-slate-500"><th class="py-1 pr-4">Key</th><th class="pr-4">Default</th><th>Meaning</th></tr></thead><tbody>
+{% for k, v in schema.items() %}<tr class="border-t border-white/5"><td class="py-1 pr-4 font-code-md">{{ k }}</td><td class="pr-4 font-code-md">{{ v[1] if v[1] is not none else '-' }}</td><td>{{ v[3] }}</td></tr>{% endfor %}</tbody></table></div>
+<p class="mt-3">Sensitivity presets:</p><ul>{% for k, v in sens.items() %}<li><strong>{{ v.label }}</strong> - {{ v.help }}</li>{% endfor %}</ul></section>
+
+<section id="api"><h3>Routes &amp; API</h3>
+<p>All routes except the landing, login, register and documentation pages require sign-in. Data belongs to its owner: another user's project returns "Access denied" (pages) or 404 (API). POST/PUT/DELETE requests need a CSRF token (<code>X-CSRFToken</code> header or <code>csrf_token</code> field).</p>
+<div class="overflow-auto"><table class="w-full text-sm"><thead><tr class="text-left text-slate-500"><th class="py-1 pr-4">Route</th><th>Methods</th></tr></thead><tbody>
+{% for r in api %}<tr class="border-t border-white/5"><td class="py-1 pr-4 font-code-md break-all">{{ r.rule }}</td><td>{{ r.methods }}</td></tr>{% endfor %}</tbody></table></div></section>
+
+<section id="db"><h3>Database &amp; migrations</h3>
+<p>SQLite in <code>instance/database.db</code>. Tables: user, scan, finding, cleanup_run, user_setting, schema_version. Migrations only add columns/tables; old scan rows are kept and marked as legacy.</p></section>
+
+<section id="security"><h3>Security</h3>
+<ul><li>Passwords hashed (PBKDF2); login attempts throttled; safe redirect handling; CSRF protection; security headers.</li><li>Uploads are stored outside <code>static/</code> and are never served directly.</li><li>The GitHub token is encrypted with a key derived from the server secret and never sent to the browser or written to logs.</li><li>Uploaded code is never executed.</li></ul></section>
+
+<section id="trouble"><h3>Troubleshooting</h3>
+<ul><li><strong>Page looks unstyled:</strong> Tailwind and fonts load from CDNs - an internet connection is required.</li><li><strong>"Scan interrupted":</strong> the server stopped mid-scan; use <em>Re-scan</em> on the project page.</li><li><strong>GitHub rate limit:</strong> save a token in Settings or wait for the reset time shown.</li><li><strong>Rollback blocked:</strong> a file changed after the run; the message names it. Restore manually from the patch or re-run.</li></ul></section>
+
+<section id="faq"><h3>FAQ</h3>
+<p><strong>Why is something "potential"?</strong> Static analysis cannot rule out dynamic use. <strong>Is my code uploaded anywhere?</strong> No: it stays on the machine running DeadCodeX (GitHub import only downloads from GitHub). <strong>Can I use it on Linux/macOS?</strong> Yes, the same steps work with <code>python3 -m venv venv &amp;&amp; source venv/bin/activate</code>.</p></section>
+</div></div>
+{% endblock %}

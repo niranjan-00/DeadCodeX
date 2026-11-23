@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% set active = 'cleanup' %}
+{% block title %}Cleanup{% endblock %}
+{% block content %}
+<div class="p-4 md:p-8">
+<header class="mb-8 flex flex-wrap justify-between items-end gap-4 pt-8 md:pt-0">
+  <div>
+    <h2 class="font-h1 text-h1 text-on-background">Cleanup Utility</h2>
+    <p class="text-slate-400 font-body-md mt-xs">Optimize project structure by removing unreferenced assets and dead code - for <a class="text-tertiary hover:underline" href="{{ url_for('project', scan_id=scan.id) }}">{{ scan.project_name }}</a>.</p>
+  </div>
+  <div class="flex items-center gap-4">
+    <div class="text-right"><span class="text-label-sm font-label-sm text-slate-500 block">LAST SCANNED</span><span class="text-on-surface font-code-md">{{ scan.finished_at | ago }}</span></div>
+    <a href="{{ url_for('analysis', scan_id=scan.id) }}" class="h-10 px-4 rounded-full bg-surface-container-high border border-white/10 flex items-center gap-2 text-sm text-slate-200 hover:bg-white/5"><span class="material-symbols-outlined text-tertiary text-lg" aria-hidden="true">analytics</span>Report</a>
+  </div>
+</header>
+{% if scan.status != 'Completed' %}
+<div class="glass-panel p-8 rounded-xl text-center text-slate-300">This project is <strong>{{ scan.status }}</strong>. The cleanup utility works on a finished analysis. <a class="text-tertiary underline" href="{{ url_for('analysis', scan_id=scan.id) }}">Go to the report</a>.</div>
+{% else %}
+<div class="grid grid-cols-12 gap-gutter">
+  <section class="col-span-12 lg:col-span-8 space-y-gutter">
+    <div class="glass-panel rounded-xl p-md">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-lg">
+        <h3 class="font-h3 text-h3 text-on-background flex items-center gap-2"><span class="material-symbols-outlined text-tertiary" aria-hidden="true">list_alt</span>Identified Bloat</h3>
+        <div class="flex gap-2"><span id="found-count" class="bg-surface-container px-3 py-1 rounded text-label-sm font-label-sm text-slate-300">… ITEMS FOUND</span>
+          <span id="critical-count" class="bg-error-container/20 border border-error/20 px-3 py-1 rounded text-label-sm font-label-sm text-error">HIGH SEVERITY: 0</span></div>
+      </div>
+      <div id="items" class="space-y-base" role="group" aria-label="Cleanup candidates"><p class="text-slate-500 text-sm">Loading…</p></div>
+      <div class="mt-lg pt-md border-t border-white/5 flex flex-wrap justify-between items-center gap-3">
+        <span id="selected-count" class="text-label-sm font-label-sm text-slate-500" aria-live="polite">TOTAL SELECTED: 0 ITEMS</span>
+        <div class="flex gap-4"><button id="clear-sel" class="text-label-sm font-label-sm text-slate-400 uppercase tracking-widest hover:underline">Clear</button>
+          <button id="select-all" class="text-label-sm font-label-sm text-tertiary uppercase tracking-widest hover:underline">Select All Redundant</button></div>
+      </div>
+    </div>
+    <div class="bg-black rounded-lg overflow-hidden border border-white/10">
+      <div class="bg-surface-container-high px-4 py-2 flex items-center justify-between border-b border-white/5">
+        <span id="log-title" class="font-label-sm text-label-sm text-slate-400">PROCESS_LOG: CLEANUP_PREVIEW</span>
+        <div class="flex gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div><div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div><div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div></div>
+      </div>
+      <div class="h-1 bg-slate-900"><div id="run-bar" class="h-full bg-tertiary transition-all" style="width:0"></div></div>
+      <pre id="log" class="p-md font-code-md text-tertiary-fixed text-sm space-y-1 max-h-72 overflow-auto custom-scrollbar" aria-live="polite">&gt; Select items to preview what will happen.</pre>
+    </div>
+
+    <div class="glass-panel rounded-xl p-md">
+      <h3 class="font-h3 text-h3 text-on-background mb-md flex items-center gap-2"><span class="material-symbols-outlined text-tertiary" aria-hidden="true">history</span>Cleanup history &amp; backups</h3>
+      {% if runs %}
+      <div class="space-y-3">
+      {% for r in runs %}
+        <details class="border border-white/10 rounded-lg" data-run="{{ r.id }}">
+          <summary class="cursor-pointer px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
+            <span class="font-code-md text-white">Run #{{ r.id }}</span>
+            <span class="px-2 py-0.5 rounded text-[11px] {% if r.status == 'Completed' %}bg-tertiary/10 text-tertiary{% elif r.status == 'Failed' %}bg-error-container/40 text-error{% elif r.status == 'Rolled back' %}bg-slate-700 text-slate-300{% else %}bg-amber-500/10 text-amber-300{% endif %}">{{ r.status }}</span>
+            <span class="text-slate-400">{{ r.items_applied }} applied · {{ r.items_skipped }} skipped · {{ r.items_failed }} failed · {{ r.bytes_removed | size }} saved</span>
+            <span class="ml-auto text-slate-500 text-xs">{{ r.started_at | dt }}</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-3 text-sm">
+            <pre class="bg-black rounded p-3 text-xs text-tertiary-fixed max-h-48 overflow-auto font-code-md">{{ r.log }}</pre>
+            {% for it in r.result_data().get('items', []) %}
+              <div class="border border-white/5 rounded p-3">
+                <p class="text-slate-200"><span class="{% if it.status == 'applied' %}text-tertiary{% elif it.status == 'failed' %}text-error{% else %}text-amber-300{% endif %}">{{ it.status | upper }}</span> · {{ it.title }} <span class="text-slate-500 font-code-md">({{ it.file }})</span></p>
+                {% if it.reason %}<p class="text-xs text-slate-400">{{ it.reason }}</p>{% endif %}
+                {% if it.status == 'applied' %}
+                  <p class="text-xs text-slate-400 mt-1">{{ it.why }}</p>
+                  <div class="grid md:grid-cols-2 gap-2 mt-2">
+                    {% if it.before %}<pre class="code-block p-2 rounded text-xs text-slate-300 overflow-auto font-code-md">{{ it.before }}</pre>{% endif %}
+                    {% if it.after %}<pre class="code-block p-2 rounded text-xs text-tertiary overflow-auto font-code-md">{{ it.after }}</pre>{% endif %}
+                  </div>
+                  <p class="text-xs text-slate-500 mt-1">Validation: {{ it.validation }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+            <div class="flex flex-wrap gap-3 items-center">
+              {% if r.patch_path %}<a class="text-tertiary underline text-xs" href="{{ url_for('api_run_patch', run_id=r.id) }}">Download patch (diff)</a>{% endif %}
+              {% set rb = rollbackable[r.id] %}
+              {% if rb[0] %}<button class="rollback px-4 py-1.5 border border-error/50 text-error rounded text-xs uppercase tracking-widest hover:bg-error/10" data-run="{{ r.id }}">Rollback this run</button>
+              {% elif r.backup_available or r.status == 'Rolled back' %}<span class="text-xs text-slate-500">{{ rb[1] }}</span>{% endif %}
+            </div>
+          </div>
+        </details>
+      {% endfor %}
+      </div>
+      {% else %}<p class="text-slate-500 text-sm">No cleanups have been run yet. A backup is created automatically before any change, and appears here with a Rollback button.</p>{% endif %}
+    </div>
+  </section>
+
+  <aside class="col-span-12 lg:col-span-4 space-y-gutter">
+    <div class="glass-panel rounded-xl p-md">
+      <h3 class="font-h3 text-h3 text-on-background mb-lg">Optimization Preview</h3>
+      <div class="space-y-lg">
+        <div><div class="flex justify-between text-label-sm font-label-sm mb-2"><span class="text-slate-500">CURRENT SIZE</span><span id="cur-size" class="text-on-surface">{{ scan.total_bytes | size }}</span></div>
+          <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-slate-400 w-full"></div></div></div>
+        <div class="flex justify-center py-xs"><span class="material-symbols-outlined text-tertiary-fixed-dim text-2xl" aria-hidden="true">arrow_downward</span></div>
+        <div><div class="flex justify-between text-label-sm font-label-sm mb-2"><span class="text-tertiary">ESTIMATED CLEAN SIZE</span><span id="est-size" class="text-tertiary">{{ scan.total_bytes | size }}</span></div>
+          <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div id="est-bar" class="h-full bg-tertiary" style="width:100%"></div></div></div>
+      </div>
+      <div class="mt-xl p-sm bg-tertiary-container/20 border border-tertiary/20 rounded-lg text-center">
+        <span id="pct" class="text-h3 font-h3 text-tertiary">0%</span><p class="text-label-sm font-label-sm text-on-tertiary-container">REDUCTION IN PROJECT SIZE</p></div>
+    </div>
+    <div class="space-y-sm">
+      <button id="clean-btn" class="w-full py-5 bg-tertiary text-on-tertiary font-h3 text-h3 rounded-xl flex items-center justify-center gap-3 neon-glow-hover transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">auto_fix_high</span>Clean Project</button>
+      <a id="dl-btn" href="{{ url_for('cleanup_download', scan_id=scan.id) }}" class="w-full py-4 border border-tertiary/50 text-tertiary font-label-sm uppercase tracking-widest rounded-xl flex items-center justify-center gap-3 hover:bg-tertiary/10 transition-all">
+        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;" aria-hidden="true">download</span>Download Cleaned ZIP</a>
+      <p class="text-center text-label-sm font-label-sm text-slate-600 mt-4">A backup is created before every change and can be restored with <em>Rollback</em> in the history below. Your uploaded ZIP is never modified.</p>
+    </div>
+    <div class="rounded-xl p-md bg-gradient-to-br from-[#0A192F] to-[#0d2a24] border border-white/5">
+      <h4 class="font-h3 text-white text-lg">How skipping works</h4>
+      <p class="text-sm text-slate-400 mt-2">Items below your confidence threshold (see <a class="text-tertiary underline" href="{{ url_for('settings') }}#cleanup">Settings → Cleanup safety</a>), changed since the scan, rejected by you, or without a safe automatic fix are skipped and listed with the reason.</p>
+    </div>
+  </aside>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirm-modal" data-modal class="hidden fixed inset-0 z-[90] bg-black/70 items-start justify-center overflow-y-auto p-4" role="dialog" aria-modal="true" aria-labelledby="cm-title">
+  <div class="bg-[#0A192F] border border-white/10 rounded-2xl w-full max-w-4xl my-8">
+    <div class="p-6 border-b border-white/10 flex justify-between items-center"><h3 id="cm-title" class="font-h3 text-white">Confirm cleanup</h3><button class="text-slate-400 hover:text-white" aria-label="Close" onclick="dcx.modal('confirm-modal', false)"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="confirm-body" class="p-6 space-y-4 text-sm text-slate-300"></div>
+  </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if scan.status == 'Completed' %}
+<script>
+(function () {
+  var scanId = {{ scan.id }}, esc = dcx.esc, items = [], sel = new Set(), total = {{ scan.total_bytes | tojson }};
+  var running = {{ (last is not none and last.status == 'Running') | tojson }};
+  var box = document.getElementById('items'), logEl = document.getElementById('log'), cleanBtn = document.getElementById('clean-btn');
+  var TYPE = {code: 'CODE', file: 'FILE', dir: 'FOLDER'};
+  var LABEL = {unused_import: 'IMPORT', unused_variable: 'VARIABLE', unused_function: 'FUNCTION', unused_class: 'CLASS', unused_export: 'EXPORT', unreachable_code: 'UNREACHABLE', dead_branch: 'BRANCH',
+               junk_file: 'CACHE/TEMP', vendor_dir: 'DEPENDENCIES', duplicate_file: 'DUPLICATE', unused_asset: 'ASSET', unused_module: 'MODULE'};
+  function render() {
+    var high = items.filter(function (i) { return i.severity === 'High'; }).length;
+    document.getElementById('found-count').textContent = items.length + ' ITEMS FOUND';
+    document.getElementById('critical-count').textContent = 'HIGH SEVERITY: ' + high;
+    if (!items.length) { box.innerHTML = '<p class="text-slate-500 text-sm">Nothing can be cleaned automatically in this project.</p>'; return; }
+    box.innerHTML = items.map(function (i) {
+      var dis = !i.eligible;
+      return '<div class="flex items-start gap-md p-sm bg-white/5 rounded-lg border border-transparent hover:border-tertiary/30 transition-all ' + (dis ? 'opacity-60' : '') + '">' +
+        '<input type="checkbox" id="cb' + i.id + '" data-id="' + i.id + '" class="mt-1 form-checkbox bg-transparent border-slate-600 text-tertiary rounded focus:ring-tertiary focus:ring-offset-0" ' + (dis ? 'disabled' : '') + ' ' + (sel.has(i.id) ? 'checked' : '') + '>' +
+        '<label for="cb' + i.id + '" class="flex-1 min-w-0 cursor-pointer"><span class="flex flex-wrap items-center gap-2"><span class="font-code-md ' + (dis ? 'text-slate-400' : 'text-on-surface') + ' break-all">' + esc(i.item_type === 'code' ? i.title : i.file.split('/').pop() + (i.item_type === 'dir' ? '/' : '')) + '</span>' +
+        '<span class="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">' + esc(LABEL[i.category] || TYPE[i.item_type]) + '</span>' +
+        '<span class="text-[10px] px-1.5 py-0.5 rounded ' + (i.certainty === 'confirmed' ? 'bg-tertiary/10 text-tertiary' : 'bg-amber-500/10 text-amber-300') + '">' + esc(i.certainty) + ' ' + i.confidence + '%</span>' +
+        (i.severity === 'High' ? '<span class="text-[10px] px-1.5 py-0.5 bg-error-container/40 text-error rounded">LARGE/HIGH</span>' : '') +
+        (i.review_status === 'approved' ? '<span class="text-[10px] px-1.5 py-0.5 bg-tertiary text-on-tertiary rounded">APPROVED</span>' : '') + '</span>' +
+        '<span class="block text-label-sm font-label-sm text-slate-500 break-all">' + esc(i.file) + (i.line ? ':' + i.line : '') + '</span>' +
+        (dis ? '<span class="block text-xs text-amber-300 mt-1">Not selectable: ' + esc(i.reason) + '</span>' : (i.reasons[0] ? '<span class="block text-xs text-slate-500 mt-1">' + esc(i.reasons[0]) + '</span>' : '')) + '</label>' +
+        '<div class="text-right mr-sm font-code-md ' + (dis ? 'text-slate-400' : 'text-on-surface') + ' whitespace-nowrap">' + dcx.size(i.size) + '</div></div>';
+    }).join('');
+    updateCount();
+  }
+  function updateCount() {
+    document.getElementById('selected-count').textContent = 'TOTAL SELECTED: ' + sel.size + ' ITEMS';
+    var est = 0; items.forEach(function (i) { if (sel.has(i.id)) est += i.size; });
+    setPreview(est, total);
+  }
+  function setPreview(est, tot) {
+    est = Math.min(est, tot);
+    document.getElementById('cur-size').textContent = dcx.size(tot);
+    document.getElementById('est-size').textContent = dcx.size(tot - est);
+    document.getElementById('est-bar').style.width = (tot ? 100 * (tot - est) / tot : 100) + '%';
+    document.getElementById('pct').textContent = (tot ? (100 * est / tot).toFixed(1) : 0) + '%';
+    cleanBtn.disabled = sel.size === 0 || running;
+  }
+  var pv;
+  function serverPreview() {
+    clearTimeout(pv);
+    if (!sel.size) { logEl.textContent = '> Select items to preview what will happen.'; return; }
+    pv = setTimeout(function () {
+      dcx.api('/api/cleanup/' + scanId + '/preview', {method: 'POST', body: {ids: Array.from(sel)}}).then(function (p) {
+        setPreview(p.estimated_bytes, p.current_size);
+        logEl.textContent = p.log.join('\n') + '\n> Ready to purge ' + dcx.size(p.estimated_bytes) + ' across ' + p.applied + ' item(s).';
+        document.getElementById('log-title').textContent = 'PROCESS_LOG: CLEANUP_PREVIEW';
+      }).catch(function (e) { logEl.textContent = '> ' + e.message; });
+    }, 250);
+  }
+  box.addEventListener('change', function (e) {
+    var cb = e.target.closest('input[type=checkbox]'); if (!cb) return;
+    var id = +cb.dataset.id; if (cb.checked) sel.add(id); else sel.delete(id);
+    updateCount(); serverPreview();
+  });
+  document.getElementById('select-all').addEventListener('click', function () {
+    items.forEach(function (i) { if (i.eligible && i.certainty === 'confirmed' && i.fix_mode === 'auto') sel.add(i.id); }); render(); serverPreview();
+  });
+  document.getElementById('clear-sel').addEventListener('click', function () { sel.clear(); render(); serverPreview(); });
+  dcx.api('/api/cleanup/' + scanId + '/candidates').then(function (d) {
+    items = d.items; total = d.total_bytes;
+    items.forEach(function (i) { if (i.checked) sel.add(i.id); });
+    render(); serverPreview();
+  }).catch(function (e) { box.innerHTML = '<p class="text-error">' + esc(e.message) + '</p>'; });
+
+  function watch(id, done) {
+    document.getElementById('log-title').textContent = 'PROCESS_LOG: RUN_' + id; running = true; cleanBtn.disabled = true;
+    var iv = setInterval(function () {
+      dcx.api('/api/run/' + id).then(function (r) {
+        logEl.textContent = r.log; logEl.scrollTop = 1e9; document.getElementById('run-bar').style.width = r.progress + '%';
+        if (r.status !== 'Running') { clearInterval(iv); running = false; done(r); }
+      }).catch(function (e) { clearInterval(iv); dcx.toast(e.message, 'error'); });
+    }, 800);
+  }
+  if (running) watch({{ (last.id if last else 0) | tojson }}, function () { location.reload(); });
+
+  cleanBtn.addEventListener('click', function () {
+    var b = document.getElementById('confirm-body'); b.textContent = 'Building preview…'; dcx.modal('confirm-modal', true);
+    dcx.api('/api/cleanup/' + scanId + '/preview', {method: 'POST', body: {ids: Array.from(sel)}}).then(function (p) {
+      var sk = p.skipped.map(function (s) { return '<li><span class="font-code-md">' + esc(s.file || '') + '</span> - ' + esc(s.reason) + '</li>'; }).join('');
+      b.innerHTML = '<p><strong class="text-white">' + p.applied + '</strong> of ' + sel.size + ' selected item(s) will be applied: ' + p.files_edited.length + ' file(s) edited, ' + p.deletes.length + ' file/folder(s) removed, <strong class="text-tertiary">' + dcx.size(p.estimated_bytes) + '</strong> saved.</p>' +
+        (sk ? '<div><p class="text-amber-300">Will be skipped (' + p.skipped.length + '):</p><ul class="list-disc ml-5 text-xs">' + sk + '</ul></div>' : '') +
+        (p.deletes.length ? '<div><p class="text-[11px] uppercase tracking-widest text-slate-500 mb-1">Removed from the working copy</p><ul class="text-xs font-code-md">' + p.deletes.map(function (d) { return '<li>' + esc(d.path) + (d.is_dir ? '/' : '') + ' (' + dcx.size(d.size) + ')</li>'; }).join('') + '</ul></div>' : '') +
+        (p.diff ? '<div><p class="text-[11px] uppercase tracking-widest text-slate-500 mb-1">Exact code changes</p><pre class="code-block rounded-lg p-3 text-xs overflow-auto max-h-72 font-code-md">' + esc(p.diff) + '</pre></div>' : '') +
+        '<p class="text-slate-400">A backup is created first. Edited files are syntax-checked (nothing is executed) and restored automatically on failure.</p>' +
+        '<div class="flex gap-3"><button id="go" class="bg-tertiary text-on-tertiary px-6 py-2 rounded font-bold" ' + (p.applied ? '' : 'disabled') + '>Clean Project</button><button class="px-6 py-2 border border-white/10 rounded" onclick="dcx.modal(\'confirm-modal\', false)">Cancel</button></div>';
+      document.getElementById('go').addEventListener('click', function () {
+        dcx.modal('confirm-modal', false);
+        dcx.api('/api/cleanup/' + scanId + '/run', {method: 'POST', body: {ids: Array.from(sel)}}).then(function (r) {
+          watch(r.run_id, function (run) {
+            if (dcx.notifyEnabled('notify.cleanup_complete')) dcx.toast('Cleanup ' + run.status.toLowerCase() + ': ' + run.items_applied + ' applied, ' + dcx.size(run.bytes_removed) + ' saved', run.status === 'Failed' ? 'error' : 'ok');
+            setTimeout(function () { location.reload(); }, 1200);
+          });
+        }).catch(function (e) { dcx.toast(e.message, 'error'); });
+      });
+    }).catch(function (e) { b.innerHTML = '<p class="text-error">' + esc(e.message) + '</p>'; });
+  });
+
+  document.querySelectorAll('.rollback').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!confirm('Restore all files changed by run #' + btn.dataset.run + ' from its backup?')) return;
+      btn.disabled = true;
+      dcx.api('/api/run/' + btn.dataset.run + '/rollback', {method: 'POST', body: {}}).then(function (r) { dcx.toast(r.message); setTimeout(function () { location.reload(); }, 800); })
+        .catch(function (e) { dcx.toast(e.message, 'error'); btn.disabled = false; });
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}DeadCodeX{% endblock %} | DeadCodeX</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel, .glass-card { background: rgba(10, 25, 47, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.06); }
+        .neon-glow-hover:hover { box-shadow: 0 0 15px rgba(78, 222, 163, 0.3); }
+        .neon-glow-tertiary { box-shadow: 0 0 8px rgba(78, 222, 163, 0.6); }
+        body { background-color: #020C1B; color: #d6e3ff; font-family: 'Inter', sans-serif; margin: 0; overflow-x: hidden; }
+        .code-block { background: #010e24; font-family: 'Space Grotesk', monospace; }
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #27354c; border-radius: 4px; }
+        :focus-visible { outline: 2px solid #4edea3; outline-offset: 2px; }
+        pre { white-space: pre-wrap; word-break: break-word; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    </style>
+    <script id="tailwind-config">
+        window.tailwind = window.tailwind || {};
+        tailwind.config = {
+            darkMode: "class",
+            theme: { extend: {
+                "colors": {"on-error-container":"#ffdad6","on-tertiary-container":"#40d399","secondary-fixed":"#d8e2ff","on-tertiary-fixed":"#002113","surface-dim":"#041329","tertiary-fixed-dim":"#4edea3","surface-container":"#112036","on-surface-variant":"#cfc2d4","on-tertiary":"#003824","on-surface":"#d6e3ff","tertiary-container":"#00573a","secondary":"#adc6ff","tertiary-fixed":"#6ffbbe","tertiary":"#4edea3","outline-variant":"#4c4452","error-container":"#93000a","on-secondary-container":"#e6ecff","inverse-primary":"#803abd","surface":"#041329","on-secondary-fixed":"#001a42","inverse-on-surface":"#233148","surface-tint":"#dfb7ff","primary-container":"#6b21a8","surface-variant":"#27354c","secondary-fixed-dim":"#adc6ff","on-secondary-fixed-variant":"#004395","on-primary":"#4a007f","surface-container-highest":"#27354c","on-secondary":"#002e6a","surface-container-high":"#1c2a41","primary-fixed":"#f1dbff","on-primary-fixed-variant":"#661aa3","outline":"#988d9e","on-error":"#690005","error":"#ffb4ab","primary-fixed-dim":"#dfb7ff","on-tertiary-fixed-variant":"#005236","on-primary-container":"#d7a8ff","surface-container-lowest":"#010e24","background":"#041329","on-background":"#d6e3ff","on-primary-fixed":"#2d0050","surface-container-low":"#0d1c32","inverse-surface":"#d6e3ff","secondary-container":"#0566d9","primary":"#dfb7ff","surface-bright":"#2c3951"},
+                "borderRadius": {"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},
+                "spacing": {"md":"24px","sm":"16px","xs":"8px","xl":"48px","base":"4px","lg":"32px","gutter":"24px","margin":"32px"},
+                "fontFamily": {"label-sm":["Space Grotesk"],"h1":["Inter"],"code-md":["Space Grotesk"],"h3":["Inter"],"body-lg":["Inter"],"body-md":["Inter"],"h2":["Inter"]},
+                "fontSize": {"label-sm":["12px",{"lineHeight":"1","letterSpacing":"0.05em","fontWeight":"600"}],"h1":["40px",{"lineHeight":"1.2","letterSpacing":"-0.02em","fontWeight":"700"}],"code-md":["14px",{"lineHeight":"1.5","fontWeight":"500"}],"h3":["24px",{"lineHeight":"1.4","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"1.6","fontWeight":"400"}],"body-md":["16px",{"lineHeight":"1.6","fontWeight":"400"}],"h2":["32px",{"lineHeight":"1.3","letterSpacing":"-0.01em","fontWeight":"600"}]}
+            } }
+        }
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+{% set cur = scan if (scan is defined and scan) else nav_scan %}
+{% macro navlink(href, icon, label, key) %}
+<a href="{{ href }}" {% if active == key %}aria-current="page"{% endif %}
+   class="{% if active == key %}bg-tertiary/10 text-tertiary border-r-4 border-tertiary{% else %}text-slate-500 hover:bg-white/5 hover:text-emerald-200{% endif %} flex items-center px-6 py-4 font-label-sm text-sm uppercase tracking-widest transition-all">
+    <span class="material-symbols-outlined mr-4" aria-hidden="true">{{ icon }}</span>{{ label }}
+</a>
+{% endmacro %}
+<button id="menu-btn" type="button" aria-label="Toggle navigation" aria-controls="sidebar" class="md:hidden fixed top-3 left-3 z-50 p-2 rounded bg-[#0A192F] border border-white/10 text-slate-300">
+    <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+</button>
+<aside id="sidebar" class="fixed left-0 top-0 h-full flex flex-col z-40 bg-[#0A192F]/95 backdrop-blur-md w-64 border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.5)] -translate-x-full md:translate-x-0 transition-transform overflow-y-auto">
+    <div class="px-6 py-8">
+        <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-tertiary flex items-center justify-center text-on-tertiary font-black">DX</div>
+            <div>
+                <h1 class="text-xl font-black text-white font-label-sm tracking-tighter">DeadCodeX</h1>
+                <p class="text-[10px] text-slate-500 font-label-sm tracking-widest">V1.1.0</p>
+            </div>
+        </a>
+    </div>
+    <nav class="flex-1 space-y-1" aria-label="Main">
+        {{ navlink(url_for('dashboard'), 'dashboard', 'Dashboard', 'dashboard') }}
+        {{ navlink(url_for('upload'), 'upload_file', 'Upload', 'upload') }}
+        {{ navlink(url_for('analysis', scan_id=cur.id) if cur else url_for('analysis_latest'), 'analytics', 'Analysis', 'analysis') }}
+        {{ navlink(url_for('cleanup', scan_id=cur.id) if cur and cur.status == 'Completed' else url_for('cleanup_latest'), 'cleaning_services', 'Cleanup', 'cleanup') }}
+        {{ navlink(url_for('rectifier', scan_id=cur.id) if cur and cur.status == 'Completed' else url_for('rectifier'), 'auto_fix_high', 'Rectifier', 'rectifier') }}
+        {{ navlink(url_for('settings'), 'settings', 'Settings', 'settings') }}
+    </nav>
+    <div class="px-6 py-6 border-t border-white/5">
+        <a href="{{ url_for('upload') }}" class="w-full bg-primary-container text-on-primary-container py-3 rounded font-label-sm text-xs tracking-widest uppercase flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+            <span class="material-symbols-outlined text-sm" aria-hidden="true">add</span>New Scan
+        </a>
+    </div>
+    <div class="pb-8 space-y-1">
+        <a class="{% if active == 'docs' %}text-white{% else %}text-slate-500{% endif %} flex items-center px-6 py-2 font-label-sm text-xs uppercase tracking-widest hover:text-white transition-colors" href="{{ url_for('docs') }}">
+            <span class="material-symbols-outlined mr-4 text-lg" aria-hidden="true">description</span>Documentation
+        </a>
+        <a class="text-slate-500 flex items-center px-6 py-2 font-label-sm text-xs uppercase tracking-widest hover:text-error transition-colors" href="{{ url_for('logout') }}">
+            <span class="material-symbols-outlined mr-4 text-lg" aria-hidden="true">logout</span>Logout
+        </a>
+    </div>
+</aside>
+<main class="md:ml-64 min-h-screen flex flex-col">
+    <div id="flash" class="px-4 md:px-8 pt-4 space-y-2" role="status" aria-live="polite">
+        {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}
+        <div class="p-3 rounded text-sm {% if category == 'error' %}bg-red-500/20 text-red-300 border border-red-500/30{% else %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/30{% endif %}">{{ message }}</div>
+        {% endfor %}{% endwith %}
+    </div>
+    {% block content %}{% endblock %}
+    <footer class="w-full flex flex-col items-center gap-3 mt-auto py-8 border-t border-white/5 bg-[#020C1B]">
+        <div class="flex gap-8"><a class="text-xs text-slate-500 hover:text-tertiary transition-colors" href="{{ url_for('docs') }}">Documentation</a>
+            <a class="text-xs text-slate-500 hover:text-tertiary transition-colors" href="{{ url_for('settings') }}">Settings</a></div>
+        <p class="text-xs text-slate-500 opacity-80">© {{ year }} DeadCodeX. Automated Precision.</p>
+    </footer>
+</main>
+<div id="toasts" class="fixed bottom-4 right-4 z-[100] space-y-2" aria-live="polite"></div>
+<script>window.DCX_SETTINGS = {{ (ui_settings or {}) | tojson }};</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

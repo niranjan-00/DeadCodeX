@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% set active = 'dashboard' %}
+{% block title %}{{ scan.project_name }}{% endblock %}
+{% block content %}
+<div class="p-4 md:p-8 space-y-6">
+  <header class="pt-8 md:pt-0 flex flex-wrap items-center justify-between gap-4">
+    <div><h2 class="font-h2 text-on-surface">{{ scan.project_name }}</h2>
+      <p class="text-slate-400 text-sm font-label-sm">PROJECT #{{ scan.id }} · STATUS: {{ scan.status | upper }}</p></div>
+    <div class="flex flex-wrap gap-3">
+      <a class="px-4 py-2 border border-white/10 rounded text-sm text-slate-200 hover:bg-white/5" href="{{ url_for('analysis', scan_id=scan.id) }}">Analysis report</a>
+      {% if scan.status == 'Completed' %}<a class="px-4 py-2 border border-white/10 rounded text-sm text-slate-200 hover:bg-white/5" href="{{ url_for('cleanup', scan_id=scan.id) }}">Cleanup</a>{% endif %}
+      {% if scan.workspace_path and scan.status in ('Completed','Failed') %}
+      <form method="post" action="{{ url_for('project_rescan', scan_id=scan.id) }}">{# re-analyze the current working copy #}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="px-4 py-2 border border-tertiary/40 rounded text-sm text-tertiary hover:bg-tertiary/10">Re-scan</button></form>{% endif %}
+      <form method="post" action="{{ url_for('project_delete', scan_id=scan.id) }}" onsubmit="return confirm('Delete this project and all of its stored files, backups and reports? This cannot be undone.');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="px-4 py-2 border border-error/40 rounded text-sm text-error hover:bg-error/10">Delete project</button></form>
+    </div>
+  </header>
+  <section class="glass-panel rounded-xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+    <dl class="space-y-2">
+      <div class="flex justify-between"><dt class="text-slate-500">Source</dt><dd class="text-slate-200">{{ scan.source_type | upper }}</dd></div>
+      {% if scan.source_url %}<div class="flex justify-between gap-4"><dt class="text-slate-500">Repository</dt><dd class="text-slate-200 break-all"><a class="text-tertiary hover:underline" rel="noopener noreferrer" target="_blank" href="{{ scan.source_url }}">{{ scan.source_url }}</a></dd></div>{% endif %}
+      {% if scan.branch %}<div class="flex justify-between"><dt class="text-slate-500">Branch</dt><dd class="text-slate-200 font-code-md">{{ scan.branch }}</dd></div>{% endif %}
+      {% if scan.commit_sha %}<div class="flex justify-between"><dt class="text-slate-500">Commit</dt><dd class="text-slate-200 font-code-md">{{ scan.commit_sha[:12] }}</dd></div>{% endif %}
+      {% if scan.subdir %}<div class="flex justify-between"><dt class="text-slate-500">Sub-directory</dt><dd class="text-slate-200 font-code-md">{{ scan.subdir }}</dd></div>{% endif %}
+      <div class="flex justify-between"><dt class="text-slate-500">Original file</dt><dd class="text-slate-200">{{ scan.filename or '–' }}</dd></div>
+      {% if scan.archive_sha256 %}<div class="flex justify-between"><dt class="text-slate-500">Archive SHA-256</dt><dd class="text-slate-200 font-code-md">{{ scan.archive_sha256[:16] }}…</dd></div>{% endif %}
+      <div class="flex justify-between"><dt class="text-slate-500">Uploaded</dt><dd class="text-slate-200">{{ scan.date | dt }}</dd></div>
+    </dl>
+    <dl class="space-y-2">
+      <div class="flex justify-between"><dt class="text-slate-500">Files</dt><dd class="text-slate-200">{{ scan.total_files }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Lines of code</dt><dd class="text-slate-200">{{ scan.total_loc }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Project size</dt><dd class="text-slate-200">{{ scan.total_bytes | size }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Findings</dt><dd class="text-slate-200">{{ scan.confirmed_count }} confirmed · {{ scan.potential_count }} potential</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Removable</dt><dd class="text-tertiary">{{ scan.redundant_bytes | size }} ({{ scan.cleanup_percentage }}%)</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Last scan</dt><dd class="text-slate-200">{{ scan.finished_at | ago }}</dd></div>
+    </dl>
+  </section>
+  {% if scan.error_message %}<div class="p-4 rounded border border-error/30 bg-error-container/20 text-error text-sm">{{ scan.error_message }}</div>{% endif %}
+  {% if summary.languages %}
+  <section class="glass-panel rounded-xl p-6"><h3 class="font-label-sm text-xs uppercase tracking-widest text-slate-400 mb-3">Languages analyzed</h3>
+    <div class="flex flex-wrap gap-3">{% for lang, d in summary.languages.items() %}<span class="px-3 py-1 bg-surface-container rounded text-sm text-slate-200">{{ lang }} · {{ d.files }} files · {{ d.loc }} lines</span>{% endfor %}</div></section>{% endif %}
+  <section class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-on-surface mb-4">Cleanup history</h3>
+    {% if runs %}<div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="text-slate-500 font-label-sm uppercase text-[11px]"><tr><th class="py-2 pr-4">Run</th><th class="pr-4">Type</th><th class="pr-4">Status</th><th class="pr-4">Applied</th><th class="pr-4">Saved</th><th>When</th></tr></thead><tbody class="divide-y divide-white/5">
+      {% for r in runs %}<tr><td class="py-2 pr-4">#{{ r.id }}</td><td class="pr-4">{{ r.kind }}</td><td class="pr-4">{{ r.status }}</td><td class="pr-4">{{ r.items_applied }} ({{ r.items_skipped }} skipped, {{ r.items_failed }} failed)</td><td class="pr-4">{{ r.bytes_removed | size }}</td><td>{{ r.started_at | dt }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    <a class="inline-block mt-4 text-tertiary text-sm hover:underline" href="{{ url_for('cleanup', scan_id=scan.id) }}">Open the Cleanup page for details and rollback →</a>
+    {% else %}<p class="text-slate-500 text-sm">No cleanups have been run on this project.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

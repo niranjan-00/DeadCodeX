@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block content %}
+<div class="flex-1 flex items-center justify-center p-8"><div class="glass-panel p-10 rounded-xl text-center max-w-lg">
+  <p class="text-6xl font-black text-tertiary mb-2">{{ code }}</p>
+  <p class="text-slate-300 mb-6">{{ message }}</p>
+  <a href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('index') }}" class="bg-tertiary text-on-tertiary px-6 py-2 rounded font-label-sm font-bold">Go back</a>
+</div></div>
+{% endblock %}

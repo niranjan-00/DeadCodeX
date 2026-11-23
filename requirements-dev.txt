@@ -1,0 +1,2 @@
+pytest>=8.0
+playwright>=1.40  # optional, only for tests/browser_smoke.py

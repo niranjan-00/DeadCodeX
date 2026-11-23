@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% set active = 'settings' %}
+{% block title %}Settings{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% macro num(key, step=1) %}
+  {% set sp = schema[key] %}
+  <label class="block"><span class="text-sm text-slate-300">{{ sp[3] }}</span>
+    <input type="number" name="{{ key }}" value="{{ st[key] if st[key] is not none else '' }}" min="{{ sp[2].min }}" max="{{ sp[2].max }}" {% if sp[0] == 'int' %}required{% endif %}
+      class="mt-1 w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-tertiary focus:border-tertiary"></label>
+{% endmacro %}
+{% macro check(key) %}
+  <label class="flex items-start gap-3 cursor-pointer"><input type="checkbox" name="{{ key }}" {{ 'checked' if st[key] }} class="mt-1 form-checkbox bg-transparent border-slate-600 text-tertiary rounded focus:ring-tertiary focus:ring-offset-0"><span class="text-sm text-slate-300">{{ schema[key][3] }}</span></label>
+{% endmacro %}
+{% macro save(section) %}<input type="hidden" name="section" value="{{ section }}"><button class="mt-4 bg-tertiary text-on-tertiary px-6 py-2 rounded-lg font-bold hover:opacity-90">Save</button>{% endmacro %}
+{% block content %}
+<div class="p-4 md:p-8 max-w-4xl">
+<header class="mb-8 pt-8 md:pt-0"><h2 class="font-h1 text-h1 text-on-background">Settings</h2>
+  <p class="text-slate-400 mt-xs">Every option here is stored per account and used by the scanner, cleanup engine or interface.</p></header>
+<nav class="flex flex-wrap gap-2 mb-8 text-sm" aria-label="Settings sections">
+  {% for a, n in [('profile','Profile'),('password','Password'),('interface','Interface'),('scan','Scan engine'),('cleanup','Cleanup safety'),('limits','Upload limits'),('github','GitHub'),('retention','Retention'),('danger','Danger zone')] %}
+  <a href="#{{ a }}" class="px-3 py-1 rounded-full border border-white/10 text-slate-300 hover:text-tertiary hover:border-tertiary/40">{{ n }}</a>{% endfor %}
+</nav>
+<div class="space-y-8">
+
+<section id="profile" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">Profile</h3>
+  <form method="post" class="space-y-4">{{ csrf() }}
+    <div><span class="text-sm text-slate-300">Username</span><p class="font-code-md text-white mt-1">{{ user.username }}</p></div>
+    <label class="block"><span class="text-sm text-slate-300">Email</span>
+      <input type="email" name="email" value="{{ user.email }}" required maxlength="150" class="mt-1 w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-tertiary focus:border-tertiary"></label>
+    {{ save('profile') }}</form></section>
+
+<section id="password" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">Change password</h3>
+  <form method="post" action="{{ url_for('settings_password') }}" class="space-y-4">{{ csrf() }}
+    {% for n, l in [('current_password','Current password'),('new_password','New password (min 8 characters)'),('confirm_password','Confirm new password')] %}
+    <label class="block"><span class="text-sm text-slate-300">{{ l }}</span><input type="password" name="{{ n }}" required autocomplete="{{ 'current-password' if n == 'current_password' else 'new-password' }}" class="mt-1 w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-tertiary focus:border-tertiary"></label>{% endfor %}
+    <button class="bg-tertiary text-on-tertiary px-6 py-2 rounded-lg font-bold">Change password</button></form></section>
+
+<section id="interface" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-1">Interface &amp; notifications</h3>
+  <p class="text-xs text-slate-500 mb-4">DeadCodeX uses a dark theme only; a light theme is not implemented.</p>
+  <form method="post" class="space-y-4">{{ csrf() }}
+    <div class="grid sm:grid-cols-2 gap-4">{{ num('ui.recent_scans') }}{{ num('ui.context_lines') }}</div>
+    {{ check('notify.scan_complete') }}{{ check('notify.cleanup_complete') }}
+    {{ save('interface') }}</form></section>
+
+<section id="scan" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">Scan engine</h3>
+  <form method="post" class="space-y-5">{{ csrf() }}
+    <fieldset><legend class="text-sm text-slate-300 mb-2">{{ schema['scan.sensitivity'][3] }}</legend>
+      <div class="grid sm:grid-cols-3 gap-3">
+      {% for k, v in sens.items() %}
+        <label class="border rounded-lg p-3 cursor-pointer {{ 'border-tertiary bg-tertiary/5' if st['scan.sensitivity'] == k else 'border-white/10' }}">
+          <input type="radio" name="scan.sensitivity" value="{{ k }}" {{ 'checked' if st['scan.sensitivity'] == k }} class="mr-2 text-tertiary focus:ring-tertiary"><span class="text-white font-bold">{{ v.label }}</span>
+          <span class="block text-xs text-slate-400 mt-1">{{ v.help }}</span></label>{% endfor %}
+      </div></fieldset>
+    {{ num('scan.min_confidence') }}
+    <fieldset><legend class="text-sm text-slate-300 mb-2">{{ schema['scan.languages'][3] }}</legend>
+      <div class="flex flex-wrap gap-4">{% for l in languages %}
+        <label class="flex items-center gap-2 text-slate-300 text-sm"><input type="checkbox" name="scan.languages" value="{{ l }}" {{ 'checked' if l in st['scan.languages'] }} class="form-checkbox bg-transparent border-slate-600 text-tertiary rounded focus:ring-tertiary focus:ring-offset-0">{{ l | capitalize }}</label>{% endfor %}</div>
+      <p class="text-xs text-slate-500 mt-2">Other languages are not analyzed for code; they are only counted and checked for file-level issues.</p></fieldset>
+    {{ check('scan.detect_assets') }}{{ check('scan.detect_duplicates') }}{{ check('scan.detect_junk') }}
+    <label class="block"><span class="text-sm text-slate-300">{{ schema['scan.exclude_dirs'][3] }} (comma separated)</span>
+      <textarea name="scan.exclude_dirs" rows="2" class="mt-1 w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white font-code-md focus:ring-tertiary focus:border-tertiary">{{ st['scan.exclude_dirs'] | join(', ') }}</textarea></label>
+    <p class="text-xs text-slate-500">Changes apply to new scans and re-scans.</p>
+    {{ save('scan') }}</form></section>
+
+<section id="cleanup" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">Cleanup safety &amp; backups</h3>
+  <form method="post" class="space-y-4">{{ csrf() }}
+    <div class="grid sm:grid-cols-2 gap-4">{{ num('cleanup.min_confidence') }}{{ num('backup.keep') }}</div>
+    {{ check('cleanup.allow_potential') }}
+    <p class="text-xs text-slate-500">A backup is always created before cleanup and cannot be turned off. Older backups beyond the limit are pruned (the newest rollback points are kept).</p>
+    {{ save('cleanup') }}</form></section>
+
+<section id="limits" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">Upload limits</h3>
+  <form method="post" class="space-y-4">{{ csrf() }}
+    <div class="grid sm:grid-cols-3 gap-4">{{ num('upload.max_zip_mb') }}{{ num('upload.max_extracted_mb') }}{{ num('upload.max_files') }}</div>
+    {{ save('limits') }}</form></section>
+
+<section id="github" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">GitHub access</h3>
+  <p class="text-sm text-slate-400 mb-3">A personal access token (read-only <em>Contents</em> permission is enough) lets you import private repositories. It is stored encrypted and never shown again or sent to the browser.</p>
+  <p class="text-sm mb-4">Status: {% if token_status == 'saved' %}<span class="text-tertiary">token saved (encrypted)</span>{% elif token_status == 'environment' %}<span class="text-tertiary">using the server's DEADCODEX_GITHUB_TOKEN</span>{% elif token_status == 'unreadable' %}<span class="text-error">saved token can no longer be decrypted - save a new one</span>{% else %}<span class="text-slate-400">no token saved - only public repositories can be imported</span>{% endif %}</p>
+  <form method="post" action="{{ url_for('settings_github_token') }}" class="flex flex-wrap gap-3 items-end">{{ csrf() }}
+    <label class="flex-1 min-w-[16rem]"><span class="text-sm text-slate-300">New token</span><input type="password" name="token" autocomplete="off" class="mt-1 w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white font-code-md focus:ring-tertiary focus:border-tertiary"></label>
+    <button class="bg-tertiary text-on-tertiary px-6 py-2 rounded-lg font-bold">Save token</button>
+    <button name="action" value="clear" formnovalidate class="px-6 py-2 rounded-lg border border-white/10 text-slate-300 hover:bg-white/5">Remove</button></form></section>
+
+<section id="retention" class="glass-panel rounded-xl p-6"><h3 class="font-h3 text-white mb-4">Retention &amp; sessions</h3>
+  <form method="post" class="space-y-4">{{ csrf() }}
+    <div class="grid sm:grid-cols-2 gap-4">{{ num('retention.days') }}</div>
+    {{ save('retention') }}</form>
+  <form method="post" action="{{ url_for('settings_retention_run') }}" class="mt-3">{{ csrf() }}<button class="text-sm text-tertiary underline">Delete expired projects now</button></form>
+  <hr class="border-white/10 my-5">
+  <form method="post" class="space-y-4">{{ csrf() }}<div class="grid sm:grid-cols-2 gap-4">{{ num('auth.idle_timeout_min') }}</div>{{ save('auth') }}</form></section>
+
+<section id="danger" class="rounded-xl p-6 border border-error/40 bg-error-container/10"><h3 class="font-h3 text-error mb-4">Danger zone</h3>
+  <p class="text-sm text-slate-400 mb-4">You currently have {{ counts.scans }} project(s). Both actions below need your password and cannot be undone.</p>
+  <div class="grid md:grid-cols-2 gap-6">
+    <form method="post" action="{{ url_for('settings_purge') }}" onsubmit="return confirm('Delete ALL projects, reports, backups and files?')" class="space-y-3">{{ csrf() }}
+      <p class="text-white font-bold text-sm">Purge all scan history &amp; files</p>
+      <input type="password" name="password" required placeholder="Password" class="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white">
+      <button class="px-5 py-2 border border-error/60 text-error rounded-lg hover:bg-error/10">Purge history</button></form>
+    <form method="post" action="{{ url_for('settings_delete_account') }}" onsubmit="return confirm('Permanently delete your account and all data?')" class="space-y-3">{{ csrf() }}
+      <p class="text-white font-bold text-sm">Delete account</p>
+      <input type="password" name="password" required placeholder="Password" class="w-full bg-surface-container border border-white/10 rounded-lg px-3 py-2 text-white">
+      <button class="px-5 py-2 bg-error text-on-error rounded-lg font-bold">Delete account</button></form>
+  </div></section>
+</div></div>
+{% endblock %}
