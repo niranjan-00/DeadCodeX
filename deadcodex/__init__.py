@@ -1,9 +1,13 @@
 
 """DeadCodeX application package.
 
-Flask application factory with safe SQLite initialization,
-Render persistent-disk support, stable secret-key handling,
-and automatic database migrations.
+Flask application factory with:
+- Render Free compatible temporary storage
+- Optional persistent-disk support
+- Stable secret-key handling
+- SQLite initialization
+- Automatic additive database migrations
+- Workspace and interrupted-scan recovery
 """
 
 from __future__ import annotations
@@ -20,24 +24,36 @@ from .extensions import db, login_manager
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 HARD_MAX_UPLOAD_MB = 200
 
-# Render persistent disk mount path.
+# Render persistent disk location (only when a disk is attached).
 RENDER_DATA_DIR = Path("/var/data")
+
+# Render Free has no persistent disk.
+RENDER_FREE_DATA_DIR = Path("/tmp/deadcodex")
 
 
 def _ensure_directory(path: Path) -> None:
-    """Create a directory safely and verify it is writable."""
-    path.mkdir(parents=True, exist_ok=True)
+    """Create a directory and verify that it is writable."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
 
-    if not path.is_dir():
-        raise RuntimeError(f"Required directory does not exist: {path}")
+        if not path.is_dir():
+            raise RuntimeError(
+                f"Required directory does not exist: {path}"
+            )
 
-    if not os.access(path, os.W_OK):
+        if not os.access(path, os.W_OK):
+            raise RuntimeError(
+                f"Directory is not writable: {path}"
+            )
+
+    except OSError as exc:
         raise RuntimeError(
-            f"Directory is not writable: {path}. "
-            "Check your Render persistent disk configuration."
-        )
+            f"Unable to create or access directory: {path}. "
+            f"Reason: {exc}"
+        ) from exc
 
 
 def _load_secret_key(instance_path: Path) -> str:
@@ -48,8 +64,10 @@ def _load_secret_key(instance_path: Path) -> str:
     if env_key:
         if len(env_key) < 32:
             raise RuntimeError(
-                "DEADCODEX_SECRET_KEY must contain at least 32 characters."
+                "DEADCODEX_SECRET_KEY must contain at least "
+                "32 characters."
             )
+
         return env_key
 
     _ensure_directory(instance_path)
@@ -57,19 +75,24 @@ def _load_secret_key(instance_path: Path) -> str:
     key_file = instance_path / "secret_key"
 
     if key_file.exists():
-        key = key_file.read_text(encoding="utf-8").strip()
+        key = key_file.read_text(
+            encoding="utf-8"
+        ).strip()
 
         if len(key) >= 32:
             return key
 
         raise RuntimeError(
             "Existing secret_key file is invalid. "
-            "Set a permanent DEADCODEX_SECRET_KEY environment variable."
+            "Set DEADCODEX_SECRET_KEY in your environment."
         )
 
     key = secrets.token_hex(32)
 
-    key_file.write_text(key, encoding="utf-8")
+    key_file.write_text(
+        key,
+        encoding="utf-8"
+    )
 
     try:
         os.chmod(key_file, 0o600)
@@ -80,12 +103,14 @@ def _load_secret_key(instance_path: Path) -> str:
 
 
 def _resolve_database_url(instance_path: Path) -> str:
-    """Resolve database URL and prepare SQLite parent directories."""
+    """Resolve database URL and prepare SQLite directories."""
 
     database_url = os.environ.get("DATABASE_URL")
 
     if not database_url:
-        database_url = f"sqlite:///{instance_path / 'database.db'}"
+        database_url = (
+            f"sqlite:///{instance_path / 'database.db'}"
+        )
 
     # Normalize PostgreSQL URLs supplied by hosting platforms.
     if database_url.startswith("postgres://"):
@@ -98,12 +123,9 @@ def _resolve_database_url(instance_path: Path) -> str:
     url = make_url(database_url)
 
     if url.get_backend_name() == "sqlite":
-
         database = url.database
 
-        # SQLite in-memory database needs no directory.
         if database and database != ":memory:":
-
             db_path = Path(database)
 
             if not db_path.is_absolute():
@@ -111,7 +133,6 @@ def _resolve_database_url(instance_path: Path) -> str:
 
             _ensure_directory(db_path.parent)
 
-            # Use an absolute, normalized SQLite path.
             database_url = (
                 "sqlite:///"
                 + db_path.resolve().as_posix()
@@ -120,28 +141,44 @@ def _resolve_database_url(instance_path: Path) -> str:
     return database_url
 
 
+def _select_instance_path(config: dict) -> Path:
+    """Select storage based on configuration and environment."""
+
+    configured_instance = config.pop(
+        "INSTANCE_PATH",
+        None
+    )
+
+    # 1. Explicit application configuration.
+    if configured_instance:
+        instance_path = Path(configured_instance)
+
+    # 2. Explicit environment configuration.
+    elif os.environ.get("DEADCODEX_DATA_DIR"):
+        instance_path = Path(
+            os.environ["DEADCODEX_DATA_DIR"]
+        )
+
+    # 3. Render deployment without explicit storage.
+    elif os.environ.get("RENDER"):
+        instance_path = RENDER_FREE_DATA_DIR
+
+    # 4. Local development.
+    else:
+        instance_path = BASE_DIR / "instance"
+
+    return instance_path.resolve()
+
+
 def create_app(config: dict | None = None) -> Flask:
     """Create and configure the DeadCodeX Flask application."""
 
     config = dict(config or {})
 
-    # Select persistent storage when explicitly configured.
-    configured_instance = config.pop("INSTANCE_PATH", None)
+    # Select the appropriate storage directory.
+    instance_path = _select_instance_path(config)
 
-    if configured_instance:
-        instance_path = Path(configured_instance)
-    elif os.environ.get("DEADCODEX_DATA_DIR"):
-        instance_path = Path(os.environ["DEADCODEX_DATA_DIR"])
-    elif os.environ.get("RENDER"):
-        # Render deployment: use the persistent disk.
-        instance_path = RENDER_DATA_DIR
-    else:
-        # Local development.
-        instance_path = BASE_DIR / "instance"
-
-    instance_path = instance_path.resolve()
-
-    # Create storage directory before accessing SQLite or secret files.
+    # Create storage before initializing Flask extensions.
     _ensure_directory(instance_path)
 
     app = Flask(
@@ -152,7 +189,10 @@ def create_app(config: dict | None = None) -> Flask:
         static_folder=str(BASE_DIR / "static"),
     )
 
-    database_url = _resolve_database_url(instance_path)
+    # Resolve database configuration.
+    database_url = _resolve_database_url(
+        instance_path
+    )
 
     app.config.update(
         SECRET_KEY=_load_secret_key(instance_path),
@@ -168,30 +208,38 @@ def create_app(config: dict | None = None) -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
 
         # Enable secure cookies on HTTPS deployments.
-        SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER")),
+        SESSION_COOKIE_SECURE=bool(
+            os.environ.get("RENDER")
+        ),
 
         CSRF_ENABLED=True,
 
         TASKS_SYNC=False,
 
-        # All project workspaces and generated backups
-        # remain on the persistent storage directory.
-        WORKSPACE_ROOT=str(instance_path / "workspaces"),
+        # Store project workspaces in the selected data directory.
+        WORKSPACE_ROOT=str(
+            instance_path / "workspaces"
+        ),
 
         GITHUB_ENV_TOKEN=os.environ.get(
             "DEADCODEX_GITHUB_TOKEN"
         ),
     )
 
-    # Apply testing or deployment-specific overrides.
+    # Apply user-provided configuration overrides.
     app.config.update(config)
 
-    # Ensure configured workspace directory exists.
-    workspace_root = Path(app.config["WORKSPACE_ROOT"])
+    # Prepare workspace directory.
+    workspace_root = Path(
+        app.config["WORKSPACE_ROOT"]
+    )
+
     _ensure_directory(workspace_root)
 
-    # Ensure overridden SQLite URLs are also prepared.
-    final_url = make_url(app.config["SQLALCHEMY_DATABASE_URI"])
+    # Prepare database if the final configured URL is SQLite.
+    final_url = make_url(
+        app.config["SQLALCHEMY_DATABASE_URI"]
+    )
 
     if final_url.get_backend_name() == "sqlite":
         database = final_url.database
@@ -209,6 +257,7 @@ def create_app(config: dict | None = None) -> Flask:
                 + db_path.resolve().as_posix()
             )
 
+    # Configure application logging.
     logging.basicConfig(
         level=logging.INFO,
         format=(
@@ -218,23 +267,30 @@ def create_app(config: dict | None = None) -> Flask:
     )
 
     app.logger.info("DeadCodeX starting...")
-    app.logger.info("Instance directory: %s", instance_path)
-    app.logger.info("Workspace directory: %s", workspace_root)
+    app.logger.info(
+        "Instance directory: %s",
+        instance_path
+    )
+    app.logger.info(
+        "Workspace directory: %s",
+        workspace_root
+    )
 
     if final_url.get_backend_name() == "sqlite":
         app.logger.info(
-            "Database: SQLite persistent/local storage"
+            "Database: SQLite (storage may be temporary)"
         )
     else:
         app.logger.info(
             "Database backend: %s",
-            final_url.get_backend_name(),
+            final_url.get_backend_name()
         )
 
     # Initialize extensions.
     db.init_app(app)
     login_manager.init_app(app)
 
+    # Initialize CSRF protection.
     from .security import init_csrf
 
     init_csrf(app)
@@ -247,20 +303,22 @@ def create_app(config: dict | None = None) -> Flask:
 
     register_routes(app)
 
-    # Run existing additive migrations.
+    # Run migrations and recover interrupted scans.
     with app.app_context():
 
         from .migrations import upgrade
         from .tasks import recover_interrupted
 
-        app.logger.info("Checking database migrations...")
+        app.logger.info(
+            "Checking database migrations..."
+        )
 
         migration_actions = upgrade()
 
         for action in migration_actions:
             app.logger.info(
                 "Database migration: %s",
-                action,
+                action
             )
 
         if not migration_actions:
@@ -268,7 +326,10 @@ def create_app(config: dict | None = None) -> Flask:
                 "Database schema is up to date."
             )
 
-        # Recover scans interrupted by previous shutdowns.
+        app.logger.info(
+            "Recovering interrupted scans..."
+        )
+
         recover_interrupted()
 
     app.logger.info(
